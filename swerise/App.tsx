@@ -1,118 +1,112 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Keyboard } from 'react-native';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+// function to handle the display when the keyboard pops up
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const Swerise = () => {
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+//text and button for the view area
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step 20">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your changes.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'android' ? 'height' : 'padding'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        <View style={styles.inner}>
+          <Text
+            style={[
+              styles.welcome,
+              { marginBottom: isKeyboardVisible ? 10 : 100 },
+            ]}
+          >
+            Welcome{'\n'}to{'\n'}Swerise
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Role"
+            placeholderTextColor="#888"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#888"
+            secureTextEntry
+          />
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => alert('Button Pressed!')}
+          >
+            <Text style={styles.buttonText}>Press Me</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
-}
+};
 
+//styling for the different elements
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
   },
-  sectionTitle: {
-    fontSize: 24,
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    width: '100%',
+  },
+  welcome: {
+    fontSize: 30,
+    color: '#333',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  input: {
+    height: 50,
+    marginVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingHorizontal: 15,
+    width: 280,
+    backgroundColor: '#fff',
+  },
+  button: {
+    backgroundColor: '#333',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
   },
 });
 
-export default App;
+export default Swerise;
