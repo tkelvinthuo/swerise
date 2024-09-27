@@ -3,7 +3,7 @@ import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingVi
 
 // function to handle the display when the keyboard pops up
 
-const Swerise = () => {
+const HomeScreen = () => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ const Swerise = () => {
           </Text>
           <TextInput
             style={styles.input}
-            placeholder="Role"
+            placeholder="Role = admin"
             placeholderTextColor="#888"
           />
           <TextInput
@@ -53,7 +53,13 @@ const Swerise = () => {
             style={styles.button}
             onPress={() => alert('Button Pressed!')}
           >
-            <Text style={styles.buttonText}>Press Me</Text>
+            <Text style={styles.buttonText}>Submit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => alert('Button Pressed!')}
+          >
+            <Text style={styles.buttonText}>Add Employee</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -109,4 +115,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Swerise;
+export default HomeScreen;
