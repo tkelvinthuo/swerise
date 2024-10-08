@@ -40,7 +40,7 @@ const HomeScreen = () => {
           </Text>
           <TextInput
             style={styles.input}
-            placeholder="Role = admin"
+            placeholder="Role"
             placeholderTextColor="#888"
           />
           <TextInput
@@ -49,12 +49,7 @@ const HomeScreen = () => {
             placeholderTextColor="#888"
             secureTextEntry
           />
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => alert('Button Pressed!')}
-          >
-            <Text style={styles.buttonText}>Submit</Text>
-          </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.button}
             onPress={() => alert('Button Pressed!')}
