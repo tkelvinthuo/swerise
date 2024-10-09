@@ -12,7 +12,10 @@ const OwnerFirstPage = () => {
   // Shop names for "Check Stock" (with "All" option)
   const stockList = ['All', 'Jimmy', 'Wagithomo', 'Francis', 'Kiganjo'];
 
-  const employeeList = ['Jimmy', 'Francis', 'Wagithomo', 'Brighton', 'Kiganjo1', 'Kevo'];
+  const employeeList = ['Jimmy', 'Francis', 'Wagithomo', 'Brighton', 'Kiganjo1', 'Kevo', 'Sam'];
+  const getEmployeeList = () => {
+    
+  }
 
   // Toggle for Shop modal
   const toggleShopModal = () => {
@@ -36,7 +39,7 @@ const OwnerFirstPage = () => {
       {/* Navigation Bar */}
       <View style={styles.navbar}>
         <TouchableOpacity style={styles.navButton}>
-          <Text style={styles.navText}>Back</Text>
+          <Text style={styles.navText}>Home</Text>
         </TouchableOpacity>
 
         <Text style={styles.appName}>Swerise</Text>
