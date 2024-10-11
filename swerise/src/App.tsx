@@ -11,6 +11,16 @@ const Swerise = () => {
       <Stack.Navigator>
         <Stack.Screen
           name="Swerise"
+          component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="OwnerFirstPage"
+          component={OwnerFirstPage}
+          options={{ headerShown: false}}
+        />
+        <Stack.Screen
+          name="EmployeeFirstPage"
           component={EmployeeFirstPage}
           options={{ headerShown: false }}
         />

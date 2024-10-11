@@ -68,7 +68,7 @@ const OwnerFirstPage = () => {
             <Text style={styles.squareText}>Finances</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.square} onPress={toggleEmployeekModal}>
-            <Text style={styles.squareText}>Employee Track</Text>
+            <Text style={styles.squareText}>Manage Employee</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.row}>

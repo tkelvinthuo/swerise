@@ -1,10 +1,14 @@
+// HomeScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Keyboard } from 'react-native';
-
-// function to handle the display when the keyboard pops up
+import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Keyboard, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const HomeScreen = () => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [role, setRole] = useState('');
+  const [password, setPassword] = useState('');
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -20,8 +24,19 @@ const HomeScreen = () => {
     };
   }, []);
 
-
-//text and button for the view area
+  const handleSubmit = () => {
+    if (password === '123') {
+      if (role.toLowerCase() === 'owner') {
+        navigation.navigate('OwnerFirstPage'); // Navigate to Owner page
+      } else if (role.toLowerCase() === 'employee') {
+        navigation.navigate('EmployeeFirstPage'); // Navigate to Employee page
+      } else {
+        Alert.alert('Invalid Role', 'Please enter either "owner" or "employee" as the role.');
+      }
+    } else {
+      Alert.alert('Invalid Password', 'The password is incorrect.');
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -40,21 +55,25 @@ const HomeScreen = () => {
           </Text>
           <TextInput
             style={styles.input}
-            placeholder="Role"
+            placeholder="Role (e.g. owner or employee)"
             placeholderTextColor="#888"
+            value={role}
+            onChangeText={setRole}
           />
           <TextInput
             style={styles.input}
             placeholder="Password"
             placeholderTextColor="#888"
             secureTextEntry
+            value={password}
+            onChangeText={setPassword}
           />
           
           <TouchableOpacity
             style={styles.button}
-            onPress={() => alert('Button Pressed!')}
+            onPress={handleSubmit}
           >
-            <Text style={styles.buttonText}>Add Employee</Text>
+            <Text style={styles.buttonText}>Submit</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -97,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   button: {
-    backgroundColor: '#333',
+    backgroundColor: '#4CAF50',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 8,
