@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeScreen, LoginPage, SignupPage, OwnerFirstPage, EmployeeFirstPage } from './screens';
+import { HomeScreen, LoginPage, SignupPage, OwnerFirstPage, EmployeeFirstPage, SettingsPage } from './screens';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
@@ -23,6 +23,11 @@ const Swerise = () => {
           name="EmployeeFirstPage"
           component={EmployeeFirstPage}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SettingsPage"
+          component={SettingsPage}
+          options={{ headerShown: false}}
         />
       </Stack.Navigator>
     </NavigationContainer>

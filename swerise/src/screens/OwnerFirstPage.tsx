@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const OwnerFirstPage = () => {
   const [isShopModalVisible, setShopModalVisible] = useState(false);
   const [isStockModalVisible, setStockModalVisible] = useState(false);
   const [isEmployeeModalVisible, setEmployeeModalVisible] = useState(false);
-
+  const [isMenuVisible, setMenuModalVisible] = useState(false);
+  const navigation = useNavigation();
   // Shop names for "Visit Shops"
   const shopNames = ['Jimmy', 'Wagithomo', 'Francis', 'Kiganjo'];
 
@@ -16,6 +18,11 @@ const OwnerFirstPage = () => {
   const getEmployeeList = () => {
     
   }
+
+  // Toggle for Menu
+  const toggleMenuModal = () => {
+    setMenuModalVisible(!isMenuVisible);
+  };
 
   // Toggle for Shop modal
   const toggleShopModal = () => {
@@ -44,7 +51,7 @@ const OwnerFirstPage = () => {
 
         <Text style={styles.appName}>Swerise</Text>
 
-        <TouchableOpacity style={styles.navButton}>
+        <TouchableOpacity style={styles.navButton} onPress={toggleMenuModal}>
           <Text style={styles.navText}>Menu</Text>
         </TouchableOpacity>
       </View>
@@ -85,6 +92,37 @@ const OwnerFirstPage = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal for the Menu */}
+      <Modal transparent={true} visible={isMenuVisible} animationType="slide" onRequestClose={toggleShopModal}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        {/* List of Menu Options */}
+                        <TouchableOpacity style={styles.shopItem}  onPress={() => {
+                          toggleMenuModal();
+                          navigation.navigate('OwnerFirstPage');
+                          }}>
+                            <Text style={styles.shopItemText}>Home</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.shopItem} onPress={() => {
+                          toggleMenuModal();
+                          navigation.navigate('SettingsPage');
+                        }}>
+                            <Text style={styles.shopItemText}>Settings</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.shopItem}>
+                            <Text style={styles.shopItemText}>About</Text>
+                        </TouchableOpacity>
+
+                        {/* Close Menu Option */}
+                        <TouchableOpacity onPress={toggleMenuModal} style={styles.closeButton}>
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
       
 
       {/* Modal for shop selection */}
