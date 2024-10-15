@@ -57,6 +57,7 @@ const EmployeeFirstPage = () => {
                 <TouchableOpacity style={styles.closeButton}>
                     <Text style={styles.buttonText}>Close</Text>
                 </TouchableOpacity>
+                
             </View>
 
             {/* Modal for Add Sale */}

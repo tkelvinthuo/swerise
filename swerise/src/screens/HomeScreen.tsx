@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Keyboard, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { fetchUserByRole, User } from '../database';
 
 const HomeScreen = () => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -24,17 +25,24 @@ const HomeScreen = () => {
     };
   }, []);
 
-  const handleSubmit = () => {
-    if (password === '123') {
-      if (role.toLowerCase() === 'owner') {
-        navigation.navigate('OwnerFirstPage'); // Navigate to Owner page
-      } else if (role.toLowerCase() === 'employee') {
-        navigation.navigate('EmployeeFirstPage'); // Navigate to Employee page
+  const handleSubmit = async () => {
+    try {
+      // Fetch the user from the database based on the role
+      const user: User | null = await fetchUserByRole(role.toLowerCase());
+
+      // Check if user exists and if the password matches
+      if (user && user.password === password) {
+        if (user.role === 'owner') {
+          navigation.navigate('OwnerFirstPage');
+        } else if (user.role === 'employee') {
+          navigation.navigate('EmployeeFirstPage');
+        }
       } else {
-        Alert.alert('Invalid Role', 'Please enter either "owner" or "employee" as the role.');
+        Alert.alert('Invalid Credentials', 'The role or password is incorrect.');
       }
-    } else {
-      Alert.alert('Invalid Password', 'The password is incorrect.');
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      Alert.alert('Error', 'There was an error verifying the credentials.');
     }
   };
 
@@ -55,7 +63,7 @@ const HomeScreen = () => {
           </Text>
           <TextInput
             style={styles.input}
-            placeholder="Role (e.g. owner or employee)"
+            placeholder="Role"
             placeholderTextColor="#888"
             value={role}
             onChangeText={setRole}
