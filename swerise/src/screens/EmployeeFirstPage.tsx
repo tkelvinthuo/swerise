@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { insertSale, insertDebt } from "../database";
 
 const EmployeeFirstPage = () => {
     // State for handling modals
@@ -10,6 +11,9 @@ const EmployeeFirstPage = () => {
     const [gasSize, setGasSize] = useState('6kg'); // Default gas size for Gas selection
     const [quantity, setQuantity] = useState(''); // For quantity input
     const [price, setPrice] = useState(''); // For price input
+    const [saleType, setSaleType] = useState('cash'); // Default sale type
+    const [customerName, setCustomerName] = useState(''); // For debt customer name
+    const [customerPhone, setCustomerPhone] = useState(''); // For debt customer phone
 
     // Toggle Add Sale Modal
     const toggleAddSaleModal = () => {
@@ -28,6 +32,97 @@ const EmployeeFirstPage = () => {
         setGasSize('6kg');
         setQuantity('');
         setPrice('');
+        setSaleType('cash');
+        setCustomerName('');
+        setCustomerPhone('');
+    };
+    
+    // Function to handle submit in sales
+    const handleSaleSubmission = async () => {
+        try {
+            // Ensure that a product has been selected
+            if (!selectedProduct) {
+                Alert.alert('Error', 'Please select a product.');
+                return;
+            }
+    
+            // Handle gas-specific validation
+            if (selectedProduct === 'gas') {
+                if (!gasSize) {
+                    Alert.alert('Error', 'Please select a gas size.');
+                    return;
+                }
+                if (!price || isNaN(Number(price))) {
+                    Alert.alert('Error', 'Please enter a valid price.');
+                    return;
+                }
+    
+                const totalAmount = parseFloat(price);
+    
+                // Check if the sale is on debt
+                if (saleType === 'debt') {
+                    if (!customerName || !customerPhone) {
+                        Alert.alert('Error', 'Please enter the customer\'s name and phone number.');
+                        return;
+                    }
+    
+                    // Insert debt sale into the database
+                    const saleId = await insertSale(selectedProduct, gasSize, 1, totalAmount, 'debt');
+    
+                    // Ensure saleId is valid before inserting debt
+                    if (saleId !== null) {
+                        await insertDebt(saleId, customerName, customerPhone, totalAmount, totalAmount);
+                    } else {
+                        Alert.alert('Error', 'Failed to record the sale. Please try again.');
+                        return;
+                    }
+                } else {
+                    // Insert cash sale into the database
+                    await insertSale(selectedProduct, gasSize, 1, totalAmount, 'cash');
+                }
+            } else {
+                // Validate for other products (petrol, diesel, kerosene)
+                if (!quantity || isNaN(Number(quantity))) {
+                    Alert.alert('Error', 'Please enter a valid quantity.');
+                    return;
+                }
+                if (!price || isNaN(Number(price))) {
+                    Alert.alert('Error', 'Please enter a valid price.');
+                    return;
+                }
+    
+                const totalAmount = parseInt(quantity) * parseFloat(price);
+    
+                // Check if the sale is on debt
+                if (saleType === 'debt') {
+                    if (!customerName || !customerPhone) {
+                        Alert.alert('Error', 'Please enter the customer\'s name and phone number.');
+                        return;
+                    }
+    
+                    // Insert debt sale into the database
+                    const saleId = await insertSale(selectedProduct, null, parseInt(quantity), totalAmount, 'debt');
+    
+                    // Ensure saleId is valid before inserting debt
+                    if (saleId !== null) {
+                        await insertDebt(saleId, customerName, customerPhone, totalAmount, totalAmount);
+                    } else {
+                        Alert.alert('Error', 'Failed to record the sale. Please try again.');
+                        return;
+                    }
+                } else {
+                    // Insert cash sale into the database
+                    await insertSale(selectedProduct, null, parseInt(quantity), totalAmount, 'cash');
+                }
+            }
+    
+            // Success alert and closing the modal
+            Alert.alert('Success', 'Sale recorded successfully!');
+            toggleAddSaleModal();
+        } catch (error) {
+            console.error('Error recording sale:', error);
+            Alert.alert('Error', 'An error occurred while recording the sale.');
+        }
     };
 
     return (
@@ -54,10 +149,18 @@ const EmployeeFirstPage = () => {
                     </TouchableOpacity>
                 </View>
 
+                <View style={styles.row}>
+                    <TouchableOpacity style={styles.button}>
+                        <Text style={styles.buttonText}>Today's Sales</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.button}>
+                        <Text style={styles.buttonText}>Total Sale</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity style={styles.closeButton}>
                     <Text style={styles.buttonText}>Close</Text>
                 </TouchableOpacity>
-                
             </View>
 
             {/* Modal for Add Sale */}
@@ -91,6 +194,13 @@ const EmployeeFirstPage = () => {
                                     <Picker.Item label="6kg" value="6kg" />
                                     <Picker.Item label="13kg" value="13kg" />
                                 </Picker>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Enter Price (KSH)"
+                                    keyboardType="numeric"
+                                    value={price}
+                                    onChangeText={setPrice}
+                                />
                             </>
                         )}
 
@@ -114,9 +224,39 @@ const EmployeeFirstPage = () => {
                             </>
                         )}
 
+                        {/* Sale Type Picker */}
+                        <Text style={styles.label}>Sale Type</Text>
+                        <Picker
+                            selectedValue={saleType}
+                            onValueChange={(itemValue) => setSaleType(itemValue)}
+                            style={styles.picker}
+                        >
+                            <Picker.Item label="Cash" value="cash" />
+                            <Picker.Item label="Debt" value="debt" />
+                        </Picker>
+
+                        {/* Conditional Input for Debt */}
+                        {saleType === 'debt' && (
+                            <>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Customer Name"
+                                    value={customerName}
+                                    onChangeText={setCustomerName}
+                                />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Customer Phone"
+                                    keyboardType="phone-pad"
+                                    value={customerPhone}
+                                    onChangeText={setCustomerPhone}
+                                />
+                            </>
+                        )}
+
                         {/* Submit and Cancel Buttons */}
                         <View style={styles.modalButtonRow}>
-                            <TouchableOpacity style={styles.modalButton} onPress={toggleAddSaleModal}>
+                            <TouchableOpacity style={styles.modalButton} onPress={handleSaleSubmission}>
                                 <Text style={styles.modalButtonText}>Submit</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.modalButton} onPress={toggleAddSaleModal}>
@@ -126,6 +266,7 @@ const EmployeeFirstPage = () => {
                     </View>
                 </View>
             </Modal>
+
             {/* Modal for Delete Sale */}
             <Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
                 <View style={styles.modalContainer}>
@@ -147,6 +288,7 @@ const EmployeeFirstPage = () => {
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     appname: {
