@@ -1,4 +1,5 @@
 import SQLite from 'react-native-sqlite-storage';
+import { format } from 'date-fns';
 
 // Define the User type
 export type User = {
@@ -194,6 +195,46 @@ const insertDefaultUser = async () => {
   }
 };
 
+export type Sale = {
+  id: number;
+  product: string;
+  gasSize: string | null;
+  quantity: number;
+  price: number;
+  date: string; // ISO string or date format
+  saleType: 'cash' | 'debt';
+};
+
+export const fetchTodaysSales = async (): Promise<Sale[]> => {
+  try {
+    const database = await db;
+    const currentDate = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          `SELECT * FROM sales WHERE date LIKE ?;`,
+          [`${currentDate}%`],
+          (tx, results) => {
+            const sales: Sale[] = [];
+            for (let i = 0; i < results.rows.length; i++) {
+              sales.push(results.rows.item(i));
+            }
+            resolve(sales);
+          },
+          (error) => {
+            console.error('Error fetching today\'s sales:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+    return [];
+  }
+};
+
 // Fetching a user by role
 export const fetchUserByRole = async (role: string): Promise<User | null> => {
   try {
@@ -222,6 +263,65 @@ export const fetchUserByRole = async (role: string): Promise<User | null> => {
   } catch (error) {
     console.error('Error opening database:', error);
     throw error;
+  }
+};
+
+// Fetch all sales sorted by date
+export const fetchAllSales = async (): Promise<Sale[]> => {
+  try {
+      const database = await db; // Assuming db is correctly initialized
+      return new Promise<Sale[]>((resolve, reject) => {
+          database.transaction(tx => {
+              tx.executeSql(
+                  `SELECT * FROM sales ORDER BY date DESC;`, // Fetch sales sorted by date
+                  [],
+                  (tx, results) => {
+                      const sales: Sale[] = [];
+                      for (let i = 0; i < results.rows.length; i++) {
+                          sales.push(results.rows.item(i));
+                      }
+                      resolve(sales);
+                  },
+                  (error) => {
+                      console.error('Error fetching sales from database:', error);
+                      reject(error);
+                  }
+              );
+          });
+      });
+  } catch (error) {
+      console.error('Error opening database:', error);
+      throw error; // Rethrow error for handling
+  }
+};
+
+// Delete a sale by its ID
+export const deleteSaleById = async (id: number) => {
+  try {
+      const database = await db;
+      return new Promise((resolve, reject) => {
+          database.transaction(tx => {
+              tx.executeSql(
+                  `DELETE FROM sales WHERE id = ?;`,
+                  [id],
+                  (tx, results) => {
+                      if (results.rowsAffected > 0) {
+                          console.log('Sale deleted successfully');
+                          resolve(true);
+                      } else {
+                          reject('No sale found with the specified ID.');
+                      }
+                  },
+                  (error) => {
+                      console.error('Error deleting sale:', error);
+                      reject(error);
+                  }
+              );
+          });
+      });
+  } catch (error) {
+      console.error('Error opening database:', error);
+      throw error;
   }
 };
 

@@ -1,11 +1,16 @@
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, Alert, FlatList, Button } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { insertSale, insertDebt } from "../database";
+import { insertSale, insertDebt, fetchTodaysSales, Sale, fetchAllSales,  } from "../database";
+import { styles, modalStyles } from "../styles/EmployeeFirstPageStyles";
 
 const EmployeeFirstPage = () => {
     // State for handling modals
+    const [todaysSales, setTodaysSales] = useState<any[]>([]);
+    const [isSalesModalVisible, setSalesModalVisible] = useState<boolean>(false);
     const [isAddSaleModalVisible, setAddSaleModalVisible] = useState(false);
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [selectedSale, setSelectedSale] = useState(null);
     const [isDeleteSaleModalVisible, setDeleteSaleModalVisible] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(''); // For product selection
     const [gasSize, setGasSize] = useState('6kg'); // Default gas size for Gas selection
@@ -36,6 +41,31 @@ const EmployeeFirstPage = () => {
         setCustomerName('');
         setCustomerPhone('');
     };
+
+     // Function to fetch all sales
+     const handleFetchAllSales = async () => {
+        try {
+            const salesData = await fetchAllSales() as Sale[]; // Use type assertion here
+            setSales(salesData); // No error should occur now
+            setDeleteSaleModalVisible(true); // Show the modal after fetching data
+        } catch (error) {
+            console.error('Error fetching sales:', error);
+            Alert.alert('Error', 'An error occurred while fetching sales.');
+        }
+    };
+    
+    // function to fetch the day's sale
+    const handleShowTodaysSales = async () => {
+        try {
+          const sales: Sale[] = await fetchTodaysSales(); // The returned data is now typed as Sale[]
+          setTodaysSales(sales);
+          setSalesModalVisible(true); // Show the modal with today's sales
+        } catch (error) {
+          console.error('Error fetching today\'s sales:', error);
+          Alert.alert('Error', 'An error occurred while fetching today\'s sales.');
+        }
+      };
+    
     
     // Function to handle submit in sales
     const handleSaleSubmission = async () => {
@@ -145,12 +175,12 @@ const EmployeeFirstPage = () => {
                         <Text style={styles.buttonText}>Add Sale</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText} onPress={toggleDeleteSaleModal}>Delete Sale</Text>
+                        <Text style={styles.buttonText} onPress={handleFetchAllSales}>Delete Sale</Text>
                     </TouchableOpacity>
                 </View>
 
                 <View style={styles.row}>
-                    <TouchableOpacity style={styles.button}>
+                    <TouchableOpacity style={styles.button} onPress={handleShowTodaysSales}>
                         <Text style={styles.buttonText}>Today's Sales</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.button}>
@@ -268,143 +298,64 @@ const EmployeeFirstPage = () => {
             </Modal>
 
             {/* Modal for Delete Sale */}
-            <Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Delete Sale</Text>
-                        <Text style={styles.modalText}>Are you sure you want to delete this sale?</Text>
-
-                        <View style={styles.modalButtonRow}>
-                            <TouchableOpacity style={styles.modalButton} onPress={toggleDeleteSaleModal}>
-                                <Text style={styles.modalButtonText}>Yes</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.modalButton} onPress={toggleDeleteSaleModal}>
-                                <Text style={styles.modalButtonText}>No</Text>
-                            </TouchableOpacity>
-                        </View>
+<Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
+    <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select a Sale to Delete</Text>
+            {sales.length > 0 ? (
+                <FlatList
+                    data={sales}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.saleItem}
+                         // Pass the selected sale to delete
+                        >
+                            <Text style={styles.saleText}>
+                                {item.date} - {item.product} - {item.saleType} - Ksh{item.price}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                />
+            ) : (
+                <Text>No sales found.</Text>
+            )}
+            <Button title="Close" onPress={() => setDeleteSaleModalVisible(false)} />
+        </View>
+    </View>
+</Modal>
+            
+            {/* Modal to view all sales*/}
+            <Modal
+                visible={isSalesModalVisible}
+                animationType="slide"
+                onRequestClose={() => setSalesModalVisible(false)}
+            >
+                <View style={modalStyles.modalContainer}>
+                <Text style={modalStyles.modalTitle}>Today's Sales</Text>
+                <FlatList
+                    data={todaysSales}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                    <View style={modalStyles.saleItem}>
+                        <Text style={modalStyles.saleText}>
+                        Product: {item.product}, Size: {item.gasSize || 'N/A'}, Quantity: {item.quantity}, 
+                        Price: {item.price}, Type: {item.saleType}
+                        </Text>
                     </View>
+                    )}
+                    ListEmptyComponent={() => (
+                    <Text style={modalStyles.emptyText}>No sales recorded for today.</Text>
+                    )}
+                />
+                <TouchableOpacity style={modalStyles.closeButton} onPress={() => setSalesModalVisible(false)}>
+                                <Text style={modalStyles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
                 </View>
             </Modal>
+
         </View>
     );
 };
-
-
-const styles = StyleSheet.create({
-    appname: {
-        color: 'black',
-        fontSize: 19,
-        fontWeight: 'bold',
-    },
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    navbar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        backgroundColor: 'white',
-    },
-    navbutton: {
-        padding: 10,
-    },
-    navtext: {
-        color: 'black',
-        fontSize: 16,
-    },
-    body: {
-        flex: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 20,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
-    button: {
-        flex: 1,
-        backgroundColor: '#4CAF50',
-        paddingVertical: 15,
-        marginHorizontal: 10,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    closeButton: {
-        backgroundColor: '#f44336',
-        paddingVertical: 15,
-        marginHorizontal: 10,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    // Modal Styles
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        width: '80%',
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 10,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    modalText: {
-        fontSize: 16,
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    input: {
-        height: 40,
-        borderColor: 'gray',
-        borderWidth: 1,
-        marginBottom: 20,
-        paddingHorizontal: 10,
-        borderRadius: 5,
-    },
-    picker: {
-        height: 50,
-        width: '100%',
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    modalButtonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    modalButton: {
-        backgroundColor: '#4CAF50',
-        padding: 10,
-        borderRadius: 5,
-        alignItems: 'center',
-        flex: 1,
-        marginHorizontal: 5,
-    },
-    modalButtonText: {
-        color: '#fff',
-        fontSize: 16,
-    },
-});
 
 export default EmployeeFirstPage;
