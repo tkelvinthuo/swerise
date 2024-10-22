@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, Alert, FlatList, Button } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { insertSale, insertDebt, fetchTodaysSales, Sale, fetchAllSales,  } from "../database";
+import { insertSale, insertDebt, fetchTodaysSales, Sale, fetchAllSales, deleteSaleById } from "../database";
 import { styles, modalStyles } from "../styles/EmployeeFirstPageStyles";
 
 const EmployeeFirstPage = () => {
@@ -10,15 +10,17 @@ const EmployeeFirstPage = () => {
     const [isSalesModalVisible, setSalesModalVisible] = useState<boolean>(false);
     const [isAddSaleModalVisible, setAddSaleModalVisible] = useState(false);
     const [sales, setSales] = useState<Sale[]>([]);
-    const [selectedSale, setSelectedSale] = useState(null);
+    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isDeleteSaleModalVisible, setDeleteSaleModalVisible] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(''); // For product selection
-    const [gasSize, setGasSize] = useState('6kg'); // Default gas size for Gas selection
-    const [quantity, setQuantity] = useState(''); // For quantity input
-    const [price, setPrice] = useState(''); // For price input
-    const [saleType, setSaleType] = useState('cash'); // Default sale type
-    const [customerName, setCustomerName] = useState(''); // For debt customer name
-    const [customerPhone, setCustomerPhone] = useState(''); // For debt customer phone
+    const [selectedProduct, setSelectedProduct] = useState(''); 
+    const [gasSize, setGasSize] = useState('6kg'); 
+    const [quantity, setQuantity] = useState(''); 
+    const [price, setPrice] = useState(''); 
+    const [saleType, setSaleType] = useState('cash'); 
+    const [customerName, setCustomerName] = useState(''); 
+    const [customerPhone, setCustomerPhone] = useState(''); 
+    const [allSales, setAllSales] = useState<Sale[]>([]);
+    const [isTotalSalesModalVisible, setTotalSalesModalVisible] = useState<boolean>(false);
 
     // Toggle Add Sale Modal
     const toggleAddSaleModal = () => {
@@ -29,6 +31,11 @@ const EmployeeFirstPage = () => {
     // Toggle Delete Sale Modal
     const toggleDeleteSaleModal = () => {
         setDeleteSaleModalVisible(!isDeleteSaleModalVisible);
+    };
+
+    // Toggle for Total Sale
+    const toggleTotalSalesModal = () => {
+        setTotalSalesModalVisible(!isTotalSalesModalVisible);
     };
 
     // Reset form fields when modal closes
@@ -54,6 +61,18 @@ const EmployeeFirstPage = () => {
         }
     };
     
+    // Function to fetch all sales for total sales
+    const handleFetchAllSalesForTotal = async () => {
+        try {
+            const salesData = await fetchAllSales();
+            setAllSales(salesData);
+            setTotalSalesModalVisible(true);
+        } catch (error) {
+            console.error('Error fetching all sales:', error);
+            Alert.alert('Error', 'An error occurred while fetching all sales.');
+        }
+    };
+
     // function to fetch the day's sale
     const handleShowTodaysSales = async () => {
         try {
@@ -65,6 +84,26 @@ const EmployeeFirstPage = () => {
           Alert.alert('Error', 'An error occurred while fetching today\'s sales.');
         }
       };
+
+      const handleDeleteSale = async () => {
+        if (!selectedSale) return;
+    
+        try {
+            await deleteSaleById(selectedSale.id); // Assuming `deleteSaleById` is a function that deletes the sale by its ID
+            Alert.alert('Success', 'Sale deleted successfully!');
+            
+            // Refresh the sales list
+            await handleFetchAllSales();
+    
+            // Clear the selected sale and close the modal
+            setSelectedSale(null);
+            setDeleteSaleModalVisible(false);
+        } catch (error) {
+            console.error('Error deleting sale:', error);
+            Alert.alert('Error', 'An error occurred while deleting the sale.');
+        }
+    };
+    
     
     
     // Function to handle submit in sales
@@ -183,7 +222,7 @@ const EmployeeFirstPage = () => {
                     <TouchableOpacity style={styles.button} onPress={handleShowTodaysSales}>
                         <Text style={styles.buttonText}>Today's Sales</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.button}>
+                    <TouchableOpacity style={styles.button} onPress={handleFetchAllSalesForTotal}>
                         <Text style={styles.buttonText}>Total Sale</Text>
                     </TouchableOpacity>
                 </View>
@@ -297,33 +336,67 @@ const EmployeeFirstPage = () => {
                 </View>
             </Modal>
 
-            {/* Modal for Delete Sale */}
-<Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
+            {/* Modal to display total sales */}
+            <Modal transparent={true} visible={isTotalSalesModalVisible} animationType="slide">
     <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select a Sale to Delete</Text>
-            {sales.length > 0 ? (
-                <FlatList
-                    data={sales}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.saleItem}
-                         // Pass the selected sale to delete
-                        >
-                            <Text style={styles.saleText}>
-                                {item.date} - {item.product} - {item.saleType} - Ksh{item.price}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                />
-            ) : (
-                <Text>No sales found.</Text>
-            )}
-            <Button title="Close" onPress={() => setDeleteSaleModalVisible(false)} />
+            <Text style={styles.modalTitle}>Total Sales</Text>
+            
+            {/* Scrollable list inside the modal */}
+            <FlatList
+                data={allSales}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                    <View style={styles.saleItem}>
+                        <Text style={styles.saleText}>
+                            {item.product} - {item.saleType} - {item.date} - ${item.price}
+                        </Text>
+                    </View>
+                )}
+                contentContainerStyle={styles.flatListContent}
+            />
+
+            <TouchableOpacity style={modalStyles.closeButton} onPress={toggleTotalSalesModal}>
+            <Text style={modalStyles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
         </View>
     </View>
 </Modal>
+
+            {/* Modal for Delete Sale */}
+            <Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Delete Sale</Text>
+                        <FlatList
+                            data={sales}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.saleItem}
+                                    onPress={() => setSelectedSale(item)}
+                                >
+                                    <Text style={styles.saleText}>
+                                        {item.product} - {item.saleType} - {item.date}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                        <View style={styles.modalButtonRow}>
+                            {selectedSale && (
+                                <TouchableOpacity style={styles.modalButton} onPress={handleDeleteSale}>
+                                    <Text style={styles.modalButtonText}>Delete</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={styles.modalButton} onPress={toggleDeleteSaleModal}>
+                                <Text style={styles.modalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+
             
             {/* Modal to view all sales*/}
             <Modal

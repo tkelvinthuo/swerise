@@ -296,24 +296,20 @@ export const fetchAllSales = async (): Promise<Sale[]> => {
 };
 
 // Delete a sale by its ID
-export const deleteSaleById = async (id: number) => {
+export const deleteSaleById = async (saleId: number): Promise<void> => {
   try {
       const database = await db;
-      return new Promise((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
           database.transaction(tx => {
               tx.executeSql(
                   `DELETE FROM sales WHERE id = ?;`,
-                  [id],
-                  (tx, results) => {
-                      if (results.rowsAffected > 0) {
-                          console.log('Sale deleted successfully');
-                          resolve(true);
-                      } else {
-                          reject('No sale found with the specified ID.');
-                      }
+                  [saleId],
+                  () => {
+                      console.log(`Sale with ID ${saleId} deleted successfully`);
+                      resolve();
                   },
                   (error) => {
-                      console.error('Error deleting sale:', error);
+                      console.error('Error deleting sale record:', error);
                       reject(error);
                   }
               );

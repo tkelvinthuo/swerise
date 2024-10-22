@@ -58,6 +58,9 @@ export const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    flatListContent: {
+        paddingBottom: 20, // Ensures some padding at the bottom of the list
+    },
     // Modal Styles
     modalContainer: {
         flex: 1,
@@ -167,15 +170,15 @@ export const modalStyles = StyleSheet.create({
       marginTop: 20,
     },
     closeButton: {
-        backgroundColor: '#4CAF50', // Tomato color or any color you prefer
+        backgroundColor: '#4CAF50',
         padding: 10,
         borderRadius: 5,
         alignItems: 'center', // Center the text horizontally
         marginTop: 10, // Add some space at the top if needed
-      },
-      closeButtonText: {
+    },
+    closeButtonText: {
         color: '#FFFFFF', // Text color
         fontSize: 16,
         fontWeight: 'bold',
-      },
+    },
   });
