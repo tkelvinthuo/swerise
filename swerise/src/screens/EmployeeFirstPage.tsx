@@ -89,13 +89,11 @@ const EmployeeFirstPage = () => {
         if (!selectedSale) return;
     
         try {
-            await deleteSaleById(selectedSale.id); // Assuming `deleteSaleById` is a function that deletes the sale by its ID
+            await deleteSaleById(selectedSale.id); 
             Alert.alert('Success', 'Sale deleted successfully!');
             
-            // Refresh the sales list
             await handleFetchAllSales();
     
-            // Clear the selected sale and close the modal
             setSelectedSale(null);
             setDeleteSaleModalVisible(false);
         } catch (error) {
@@ -338,30 +336,30 @@ const EmployeeFirstPage = () => {
 
             {/* Modal to display total sales */}
             <Modal transparent={true} visible={isTotalSalesModalVisible} animationType="slide">
-    <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Total Sales</Text>
-            
-            {/* Scrollable list inside the modal */}
-            <FlatList
-                data={allSales}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                    <View style={styles.saleItem}>
-                        <Text style={styles.saleText}>
-                            {item.product} - {item.saleType} - {item.date} - ${item.price}
-                        </Text>
-                    </View>
-                )}
-                contentContainerStyle={styles.flatListContent}
-            />
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Total Sales</Text>
+                        
+                        {/* Scrollable list inside the modal */}
+                        <FlatList
+                            data={allSales}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <View style={styles.saleItem}>
+                                    <Text style={styles.saleText}>
+                                        {item.product} - {item.saleType} - {item.date} - ${item.price}
+                                    </Text>
+                                </View>
+                            )}
+                            contentContainerStyle={styles.flatListContent}
+                        />
 
-            <TouchableOpacity style={modalStyles.closeButton} onPress={toggleTotalSalesModal}>
-            <Text style={modalStyles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-        </View>
-    </View>
-</Modal>
+                        <TouchableOpacity style={modalStyles.closeButton} onPress={toggleTotalSalesModal}>
+                            <Text style={modalStyles.closeButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Modal for Delete Sale */}
             <Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">

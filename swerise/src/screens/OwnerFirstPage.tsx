@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  FlatList,
+  TextInput,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { styles } from '../styles/OwnerFirstPageStyles';
+import * as database from '../database';
+import { Product, Shop } from '../database';
 
 const OwnerFirstPage = () => {
   const [isShopModalVisible, setShopModalVisible] = useState(false);
@@ -8,16 +19,14 @@ const OwnerFirstPage = () => {
   const [isEmployeeModalVisible, setEmployeeModalVisible] = useState(false);
   const [isMenuVisible, setMenuModalVisible] = useState(false);
   const navigation = useNavigation();
-  // Shop names for "Visit Shops"
-  const shopNames = ['Jimmy', 'Wagithomo', 'Francis', 'Kiganjo'];
 
-  // Shop names for "Check Stock" (with "All" option)
+  const [shopNames, setShopNames] = useState<Shop[]>([]);
+  const [shopName, setShopName] = useState(''); // Define shopName
+  const [shopLocation, setShopLocation] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+
   const stockList = ['All', 'Jimmy', 'Wagithomo', 'Francis', 'Kiganjo'];
-
   const employeeList = ['Jimmy', 'Francis', 'Wagithomo', 'Brighton', 'Kiganjo1', 'Kevo', 'Sam'];
-  const getEmployeeList = () => {
-    
-  }
 
   // Toggle for Menu
   const toggleMenuModal = () => {
@@ -34,12 +43,32 @@ const OwnerFirstPage = () => {
     setStockModalVisible(!isStockModalVisible);
   };
 
-    // Toggle for Stock modal
-  const toggleEmployeekModal = () => {
+  // Toggle for Employee modal
+  const toggleEmployeeModal = () => {
     setEmployeeModalVisible(!isEmployeeModalVisible);
   };
 
+  const handleAddShop = async () => {
+    if (shopName && shopLocation) {
+      const shopId = await database.insertShop(shopName, shopLocation);
+      if (shopId) {
+        console.log('New shop added with ID:', shopId);
+        
+        const newShop: Shop = { id: shopId, name: shopName, location: shopLocation };
+        setShopNames((prevShops) => [...prevShops, newShop]);
+        setShopName('');
+        setShopLocation('');
+      }
+    } else {
+      alert('Please fill out both the shop name and location.');
+    }
+  };
 
+  const handleDeleteShop = async (shopId: number) => {
+    await database.deleteShopById(shopId);
+    console.log(`Shop with ID ${shopId} deleted`);
+    setShopNames((prevShops) => prevShops.filter(shop => shop.id !== shopId));
+  };
 
   return (
     <View style={styles.container}>
@@ -59,73 +88,77 @@ const OwnerFirstPage = () => {
       {/* Body with squares/buttons */}
       <View style={styles.body}>
         <View style={styles.row}>
-          {/* Visit Shops Button */}
           <TouchableOpacity style={styles.square} onPress={toggleShopModal}>
-            <Text style={styles.squareText}>Visit Shops</Text>
+            <Text style={styles.squareText}>Manage Shops</Text>
           </TouchableOpacity>
 
-          {/* Check Stock Button */}
           <TouchableOpacity style={styles.square} onPress={toggleStockModal}>
-            <Text style={styles.squareText}>Check Stock</Text>
+            <Text style={styles.squareText}>Manage Stock</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.row}>
-          <TouchableOpacity style={styles.square} >
+          <TouchableOpacity style={styles.square}>
             <Text style={styles.squareText}>Finances</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.square} onPress={toggleEmployeekModal}>
+          <TouchableOpacity style={styles.square} onPress={toggleEmployeeModal}>
             <Text style={styles.squareText}>Manage Employee</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.row}>
           <TouchableOpacity style={styles.square}>
-            <Text style={styles.squareText}>Supplier Status</Text>
+            <Text style={styles.squareText}>Manage Suppliers</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.square}>
             <Text style={styles.squareText}>Others</Text>
           </TouchableOpacity>
         </View>
-        <View >
-          <TouchableOpacity style={styles.exitButton}>
-            <Text style={styles.exitButtonText}>Exit</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.exitButton}>
+          <Text style={styles.exitButtonText}>Exit</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Modal for the Menu */}
-      <Modal transparent={true} visible={isMenuVisible} animationType="slide" onRequestClose={toggleShopModal}>
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        {/* List of Menu Options */}
-                        <TouchableOpacity style={styles.shopItem}  onPress={() => {
-                          toggleMenuModal();
-                          navigation.navigate('OwnerFirstPage');
-                          }}>
-                            <Text style={styles.shopItemText}>Home</Text>
-                        </TouchableOpacity>
+      <Modal
+        transparent={true}
+        visible={isMenuVisible}
+        animationType="slide"
+        onRequestClose={toggleMenuModal}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.shopItem}
+              onPress={() => {
+                toggleMenuModal();
+                navigation.navigate('OwnerFirstPage');
+              }}
+            >
+              <Text style={styles.shopItemText}>Home</Text>
+            </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.shopItem} onPress={() => {
-                          toggleMenuModal();
-                          navigation.navigate('SettingsPage');
-                        }}>
-                            <Text style={styles.shopItemText}>Settings</Text>
-                        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shopItem}
+              onPress={() => {
+                toggleMenuModal();
+                navigation.navigate('SettingsPage');
+              }}
+            >
+              <Text style={styles.shopItemText}>Settings</Text>
+            </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.shopItem}>
-                            <Text style={styles.shopItemText}>About</Text>
-                        </TouchableOpacity>
+            <TouchableOpacity style={styles.shopItem}>
+              <Text style={styles.shopItemText}>About</Text>
+            </TouchableOpacity>
 
-                        {/* Close Menu Option */}
-                        <TouchableOpacity onPress={toggleMenuModal} style={styles.closeButton}>
-                            <Text style={styles.closeButtonText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-      
+            <TouchableOpacity onPress={toggleMenuModal} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-      {/* Modal for shop selection */}
+      {/* Modal for managing shops */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -134,16 +167,38 @@ const OwnerFirstPage = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select a Shop</Text>
+            <Text style={styles.modalTitle}>Manage Shops</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Shop Name"
+              value={shopName}
+              onChangeText={setShopName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Shop Location"
+              value={shopLocation}
+              onChangeText={setShopLocation}
+            />
+            <TouchableOpacity style={styles.addButton} onPress={handleAddShop}>
+              <Text style={styles.addButtonText}>Add Shop</Text>
+            </TouchableOpacity>
+            
             <FlatList
               data={shopNames}
-              keyExtractor={(item, index) => index.toString()}
+              keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.shopItem}>
-                  <Text style={styles.shopItemText}>{item}</Text>
-                </TouchableOpacity>
+                <View style={styles.shopItem}>
+                  <Text style={styles.shopItemText}>
+                    {item.name} - {item.location}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleDeleteShop(item.id)}>
+                    <Text style={styles.deleteButton}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             />
+            
             <TouchableOpacity style={styles.closeButton} onPress={toggleShopModal}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
@@ -176,11 +231,12 @@ const OwnerFirstPage = () => {
           </View>
         </View>
       </Modal>
+
       <Modal
         animationType="slide"
         transparent={true}
         visible={isEmployeeModalVisible}
-        onRequestClose={toggleEmployeekModal}
+        onRequestClose={toggleEmployeeModal}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -194,7 +250,7 @@ const OwnerFirstPage = () => {
                 </TouchableOpacity>
               )}
             />
-            <TouchableOpacity style={styles.closeButton} onPress={toggleEmployeekModal}>
+            <TouchableOpacity style={styles.closeButton} onPress={toggleEmployeeModal}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -204,105 +260,6 @@ const OwnerFirstPage = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  closeButton: {
-    marginTop: 20,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  exitButton: {
-    marginTop: 40,
-    backgroundColor: 'red',
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  exitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: 'white',
-  },
-  navButton: {
-    padding: 10,
-  },
-  navText: {
-    color: 'black',
-    fontSize: 16,
-  },
-  appName: {
-    color: 'black',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  body: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    padding: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
-  },
-  shopItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  shopItemText: {
-    fontSize: 18,
-    color: '#333',
-  },
-  square: {
-    flex: 1,
-    margin: 10,
-    height: 80,
-    backgroundColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-    elevation: 3,
-  },
-  squareText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
+
 
 export default OwnerFirstPage;

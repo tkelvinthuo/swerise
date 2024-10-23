@@ -8,6 +8,21 @@ export type User = {
   password: string;
 };
 
+export type Product = {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  shopId: number; // Optional: if products are associated with specific shops
+};
+
+
+export type Shop = {
+  id: number;
+  name: string;
+  location: string;
+};
+
 // Enable debugging for development
 SQLite.enablePromise(true);
 SQLite.DEBUG(true);
@@ -32,6 +47,141 @@ const createUsersTable = async () => {
         },
         (error) => {
           console.error('Error creating users table:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+  }
+};
+
+// Function to create the 'shops' table
+const createShopsTable = async () => {
+  try {
+    const database = await db;
+    database.transaction(tx => {
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS shops (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          location TEXT
+        );`,
+        [],
+        () => {
+          console.log('Shops table created successfully');
+        },
+        (error) => {
+          console.error('Error creating shops table:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+  }
+};
+
+
+// Function to insert a new shop
+export const insertShop = async (name: string, location: string): Promise<number | null> => {
+  try {
+    const database = await db;
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO shops (name, location) VALUES (?, ?);`,
+          [name, location],
+          (tx, results) => {
+            const shopId = results.insertId;
+            console.log('Shop inserted successfully with ID:', shopId);
+            resolve(shopId);
+          },
+          (error) => {
+            console.error('Error inserting shop:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+    return null;
+  }
+};
+
+// Function to delete a shop by its ID
+export const deleteShopById = async (shopId: number): Promise<void> => {
+  try {
+    const database = await db;
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          `DELETE FROM shops WHERE id = ?;`,
+          [shopId],
+          () => {
+            console.log(`Shop with ID ${shopId} deleted successfully`);
+            resolve();
+          },
+          (error) => {
+            console.error('Error deleting shop:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+    throw error;
+  }
+};
+
+// Function to insert a new product into a shop
+export const insertProduct = async (shopId: number, name: string, unit: string, price: number): Promise<number | null> => {
+  try {
+    const database = await db;
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO products (shopId, name, unit, price) VALUES (?, ?, ?, ?);`,
+          [shopId, name, unit, price],
+          (tx, results) => {
+            const productId = results.insertId;
+            console.log('Product inserted successfully with ID:', productId);
+            resolve(productId);
+          },
+          (error) => {
+            console.error('Error inserting product:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+    return null;
+  }
+};
+
+
+// Function to create the 'products' table
+const createProductsTable = async () => {
+  try {
+    const database = await db;
+    database.transaction(tx => {
+      tx.executeSql(
+        `CREATE TABLE IF NOT EXISTS products (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shopId INTEGER,
+          name TEXT,
+          unit TEXT,
+          price REAL,
+          FOREIGN KEY (shopId) REFERENCES shops(id)
+        );`,
+        [],
+        () => {
+          console.log('Products table created successfully');
+        },
+        (error) => {
+          console.error('Error creating products table:', error);
         }
       );
     });
@@ -326,9 +476,11 @@ export const deleteSaleById = async (saleId: number): Promise<void> => {
 // Function to initialize the database (create tables and insert default user)
 export const initializeDatabase = async () => {
   await createUsersTable();
+  await insertDefaultUser();
   await createSalesTable();
   await createDebtsTable();
-  await insertDefaultUser();
+  await createShopsTable();
+  await createProductsTable();
 };
 
 export default db;
