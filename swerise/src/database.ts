@@ -1,27 +1,26 @@
+/* Pseudocode for database and functions
+ 
+1. Connect to the database
+2. Create necessary tables for various info to be stored
+3. Create functions to insert data into the tables
+- Tables to be created:
+1. Users- EmployeeID, Full name, role, Id no, password, attached shopID
+2. Shop- ShopID, location, name
+3. Products- (name, quantity, unit price, product id)
+4. Sales -  saleID, shopID, employeeID, productID, date
+
+Flow of information
+1. During installation, all tables are created and data synced from the cloud storage
+2. During login, information is fetched from the user table
+3. Addition of sale process:
+    a) Record is added to the sales table with necessary information
+    b) In the products table, that particular quantity is reduced by quantity sold
+    c) During sync, each sale is uploaded systematically
+
+ */
+
 import SQLite from 'react-native-sqlite-storage';
 import { format } from 'date-fns';
-
-// Define the User type
-export type User = {
-  id: number;
-  role: string;
-  password: string;
-};
-
-export type Product = {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  shopId: number; // Optional: if products are associated with specific shops
-};
-
-
-export type Shop = {
-  id: number;
-  name: string;
-  location: string;
-};
 
 // Enable debugging for development
 SQLite.enablePromise(true);
@@ -30,20 +29,25 @@ SQLite.DEBUG(true);
 // Open the database or create it if it doesn't exist
 const db = SQLite.openDatabase({ name: 'swerise.db', location: 'default' });
 
-// Function to create the 'users' table
+
+// creating users table
 const createUsersTable = async () => {
   try {
     const database = await db;
     database.transaction(tx => {
       tx.executeSql(
         `CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          role TEXT,
-          password TEXT
+          userID INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          fullName TEXT NOT NULL,
+          role TEXT NOT NULL,
+          password TEXT NOT NULL,
+          shopID INTEGER,
+          FOREIGN KEY (shopID) REFERENCES shops (shopID)
         );`,
         [],
         () => {
-          console.log('Users table created successfully');
+          console.log('Users table created');
         },
         (error) => {
           console.error('Error creating users table:', error);
@@ -55,16 +59,69 @@ const createUsersTable = async () => {
   }
 };
 
-// Function to create the 'shops' table
+// function to input data into the users table
+const insertUser = async (username: string, fullName: string, role: string, password: string, shopID: number) => {
+  try {
+    const database = await db;
+
+    database.transaction(tx => {
+      tx.executeSql(
+        `INSERT INTO users (username, fullName, role, password, shopID) VALUES (?, ?, ?, ?, ?)`,
+        [username, fullName, role, password, shopID],
+        () => {
+          console.log('User inserted successfully');
+        },
+        (error) => {
+          console.error('Error inserting user:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error during user insertion:', error);
+  }
+};
+
+// for development, two default users are inserted
+const insertDefaultUsers = async () => {
+  try {
+    const database = await db;
+
+    database.transaction(tx => {
+      tx.executeSql(
+        `SELECT COUNT(*) AS count FROM users WHERE username IN (?, ?)`,
+        ['owner', 'employee'],
+        async (_, results) => {
+          const { count } = results.rows.item(0);
+
+          if (count === 0) {
+            await insertUser('owner', 'Owner Name', 'Owner', 'owner123', 1);
+            await insertUser('employee', 'Employee Name', 'Employee', 'employee123', 1);
+            console.log('Default users inserted');
+          } else {
+            console.log('Default users already exist');
+          }
+        },
+        (error) => {
+          console.error('Error checking default users:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error during insertDefaultUsers:', error);
+  }
+};
+
+
+// create table for shops
 const createShopsTable = async () => {
   try {
     const database = await db;
     database.transaction(tx => {
       tx.executeSql(
-        `CREATE TABLE IF NOT EXISTS shops (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT,
-          location TEXT
+        `CREATE TABLE IF NOT EXISTS shops ( 
+          shopID INTEGER PRIMARY KEY AUTOINCREMENT,
+          location TEXT NOT NULL,
+          name TEXT NOT NULL, 
         );`,
         [],
         () => {
@@ -134,7 +191,7 @@ export const deleteShopById = async (shopId: number): Promise<void> => {
   }
 };
 
-// Function to insert a new product into a shop
+// Create productID, QOM, Unit_price, valuation
 export const insertProduct = async (shopId: number, name: string, unit: string, price: number): Promise<number | null> => {
   try {
     const database = await db;
@@ -190,7 +247,7 @@ const createProductsTable = async () => {
   }
 };
 
-// Function to create the 'sales' table
+// Total revamp
 const createSalesTable = async () => {
   try {
     const database = await db;
@@ -219,7 +276,7 @@ const createSalesTable = async () => {
   }
 };
 
-// Function to create the 'debts' table
+// To be handled by customer's table 
 const createDebtsTable = async () => {
   try {
     const database = await db;
@@ -283,7 +340,7 @@ export const insertSale = async (
   }
 };
 
-// Function to insert debt information for a sale
+// Updated from the customer's table 
 export const insertDebt = async (
   saleId: number,
   customerName: string,
@@ -311,39 +368,6 @@ export const insertDebt = async (
   }
 };
 
-// Function to insert default user information into the 'users' table
-const insertDefaultUser = async () => {
-  try {
-    const database = await db;
-    database.transaction(tx => {
-      // Insert default owner
-      tx.executeSql(
-        `INSERT OR IGNORE INTO users (role, password) VALUES (?, ?);`,
-        ['owner', '1234'],
-        () => {
-          console.log('Default owner inserted successfully');
-        },
-        (error) => {
-          console.error('Error inserting default owner:', error);
-        }
-      );
-
-      // Insert default employee
-      tx.executeSql(
-        `INSERT OR IGNORE INTO users (role, password) VALUES (?, ?);`,
-        ['employee', '1234'],
-        () => {
-          console.log('Default employee inserted successfully');
-        },
-        (error) => {
-          console.error('Error inserting default employee:', error);
-        }
-      );
-    });
-  } catch (error) {
-    console.error('Error opening database:', error);
-  }
-};
 
 export type Sale = {
   id: number;
@@ -476,7 +500,7 @@ export const deleteSaleById = async (saleId: number): Promise<void> => {
 // Function to initialize the database (create tables and insert default user)
 export const initializeDatabase = async () => {
   await createUsersTable();
-  await insertDefaultUser();
+  await insertDefaultUsers();
   await createSalesTable();
   await createDebtsTable();
   await createShopsTable();
