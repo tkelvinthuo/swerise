@@ -1,140 +1,105 @@
-// HomeScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Keyboard, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { fetchUserByRole, User } from '../database';
+import React, { useState } from "react";
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import LinearGradient from "react-native-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
+import { fetchUserCredentials } from "../database";
+
 
 const HomeScreen = () => {
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [role, setRole] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
   const navigation = useNavigation();
 
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardVisible(true);
-    });
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-    });
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-
-  const handleSubmit = async () => {
+  const handleLogin = async () => {
     try {
-      // Fetch the user from the database based on the role
-      const user: User | null = await fetchUserByRole(role.toLowerCase());
+      const user = await fetchUserCredentials(username);
 
-      // Check if user exists and if the password matches
-      if (user && user.password === password) {
-        if (user.role === 'owner') {
-          navigation.navigate('OwnerFirstPage');
-        } else if (user.role === 'employee') {
-          navigation.navigate('EmployeeFirstPage');
+      if (user) {
+        if (user.password === password) {
+          if (user.role === 'Owner') {
+            // Navigate to OwnerFirstPage
+            navigation.navigate('OwnerFirstPage');
+          } else if (user.role === 'Employee') {
+            // Navigate to EmployeeFirstPage
+            navigation.navigate('EmployeeFirstPage');
+          } else {
+            Alert.alert('Error', 'Role not recognized');
+          }
+        } else {
+          Alert.alert('Error', 'Incorrect password');
         }
       } else {
-        Alert.alert('Invalid Credentials', 'The role or password is incorrect.');
+        Alert.alert('Error', 'User not found');
       }
     } catch (error) {
-      console.error('Error fetching user:', error);
-      Alert.alert('Error', 'There was an error verifying the credentials.');
+      console.error('Error during login:', error);
+      Alert.alert('Error', 'An error occurred during login');
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'android' ? 'height' : 'padding'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        <View style={styles.inner}>
-          <Text
-            style={[
-              styles.welcome,
-              { marginBottom: isKeyboardVisible ? 10 : 100 },
-            ]}
-          >
-            Welcome{'\n'}to{'\n'}Swerise
-          </Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Role"
-            placeholderTextColor="#888"
-            value={role}
-            onChangeText={setRole}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSubmit}
-          >
-            <Text style={styles.buttonText}>Submit</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-};
 
-//styling for the different elements
+
+  return (
+    <LinearGradient
+      colors={['#252F40', '#3b5998', '#4682b4']}
+      style={styles.container}>
+      <Text style={styles.title}>Welcome</Text>
+      <TextInput
+      style={styles.input}
+      placeholder="Username"
+      placeholderTextColor="white"
+      value={username}
+      onChangeText={setUsername}
+      />
+      <TextInput
+      style={styles.input}
+      placeholder="Password"
+      placeholderTextColor="white"
+      value={password}
+      onChangeText={setPassword}>
+      </TextInput>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttontext}>Login</Text>
+      </TouchableOpacity>
+    </LinearGradient>
+  )
+}
+
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    borderRadius: 5,
+    justifyContent: 'center',
+    backgroundColor: 'coral',
+    height: 40,
+    width: '60%',
+  },
+  buttontext: {
+    color: 'white',
+    fontSize: 20,
+  },
   container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  inner: {
-    flex: 1,
+    flex:1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    width: '100%',
-  },
-  welcome: {
-    fontSize: 30,
-    color: '#333',
-    fontWeight: '500',
-    textAlign: 'center',
   },
   input: {
-    height: 50,
-    marginVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    paddingHorizontal: 15,
-    width: 280,
-    backgroundColor: '#fff',
+    color: 'white',
+    backgroundColor: '#55ACEE',
+    borderRadius: 5,
+    fontSize: 15,
+    height: 40,
+    marginBottom: 15,
+    paddingLeft: 20,
+    justifyContent: 'center',
+    width: '80%',
   },
-  button: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+  title: {
+    color: 'white',
+    fontSize: 32,
+    fontWeight: 'bold',
+    paddingBottom: 20,
+  }
+})
 
 export default HomeScreen;

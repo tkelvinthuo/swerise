@@ -23,7 +23,6 @@ const LoginPage = () => {
           />
           <TouchableOpacity
             style={styles.button}
-            onPress={() => alert('Button Pressed!')}
           >
             <Text style={styles.buttonText}>Submit</Text>
           </TouchableOpacity>

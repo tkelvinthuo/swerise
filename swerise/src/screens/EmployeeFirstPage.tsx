@@ -1,432 +1,87 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Modal, TextInput, Alert, FlatList, Button } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { insertSale, insertDebt, fetchTodaysSales, Sale, fetchAllSales, deleteSaleById } from "../database";
-import { styles, modalStyles } from "../styles/EmployeeFirstPageStyles";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Icon } from 'react-native-elements';  // Importing external Icon component
+import SalePage from './SalePage';
+import SettingsPage from './SettingsPage';
 
-const EmployeeFirstPage = () => {
-    // State for handling modals
-    const [todaysSales, setTodaysSales] = useState<any[]>([]);
-    const [isSalesModalVisible, setSalesModalVisible] = useState<boolean>(false);
-    const [isAddSaleModalVisible, setAddSaleModalVisible] = useState(false);
-    const [sales, setSales] = useState<Sale[]>([]);
-    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-    const [isDeleteSaleModalVisible, setDeleteSaleModalVisible] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(''); 
-    const [gasSize, setGasSize] = useState('6kg'); 
-    const [quantity, setQuantity] = useState(''); 
-    const [price, setPrice] = useState(''); 
-    const [saleType, setSaleType] = useState('cash'); 
-    const [customerName, setCustomerName] = useState(''); 
-    const [customerPhone, setCustomerPhone] = useState(''); 
-    const [allSales, setAllSales] = useState<Sale[]>([]);
-    const [isTotalSalesModalVisible, setTotalSalesModalVisible] = useState<boolean>(false);
+// Create a Tab Navigator
+const Tab = createBottomTabNavigator();
 
-    // Toggle Add Sale Modal
-    const toggleAddSaleModal = () => {
-        setAddSaleModalVisible(!isAddSaleModalVisible);
-        resetForm();
-    };
-
-    // Toggle Delete Sale Modal
-    const toggleDeleteSaleModal = () => {
-        setDeleteSaleModalVisible(!isDeleteSaleModalVisible);
-    };
-
-    // Toggle for Total Sale
-    const toggleTotalSalesModal = () => {
-        setTotalSalesModalVisible(!isTotalSalesModalVisible);
-    };
-
-    // Reset form fields when modal closes
-    const resetForm = () => {
-        setSelectedProduct('');
-        setGasSize('6kg');
-        setQuantity('');
-        setPrice('');
-        setSaleType('cash');
-        setCustomerName('');
-        setCustomerPhone('');
-    };
-
-     // Function to fetch all sales
-     const handleFetchAllSales = async () => {
-        try {
-            const salesData = await fetchAllSales() as Sale[]; // Use type assertion here
-            setSales(salesData); // No error should occur now
-            setDeleteSaleModalVisible(true); // Show the modal after fetching data
-        } catch (error) {
-            console.error('Error fetching sales:', error);
-            Alert.alert('Error', 'An error occurred while fetching sales.');
-        }
-    };
-    
-    // Function to fetch all sales for total sales
-    const handleFetchAllSalesForTotal = async () => {
-        try {
-            const salesData = await fetchAllSales();
-            setAllSales(salesData);
-            setTotalSalesModalVisible(true);
-        } catch (error) {
-            console.error('Error fetching all sales:', error);
-            Alert.alert('Error', 'An error occurred while fetching all sales.');
-        }
-    };
-
-    // function to fetch the day's sale
-    const handleShowTodaysSales = async () => {
-        try {
-          const sales: Sale[] = await fetchTodaysSales(); // The returned data is now typed as Sale[]
-          setTodaysSales(sales);
-          setSalesModalVisible(true); // Show the modal with today's sales
-        } catch (error) {
-          console.error('Error fetching today\'s sales:', error);
-          Alert.alert('Error', 'An error occurred while fetching today\'s sales.');
-        }
-      };
-
-      const handleDeleteSale = async () => {
-        if (!selectedSale) return;
-    
-        try {
-            await deleteSaleById(selectedSale.id); 
-            Alert.alert('Success', 'Sale deleted successfully!');
-            
-            await handleFetchAllSales();
-    
-            setSelectedSale(null);
-            setDeleteSaleModalVisible(false);
-        } catch (error) {
-            console.error('Error deleting sale:', error);
-            Alert.alert('Error', 'An error occurred while deleting the sale.');
-        }
-    };
-    
-    
-    
-    // Function to handle submit in sales
-    const handleSaleSubmission = async () => {
-        try {
-            // Ensure that a product has been selected
-            if (!selectedProduct) {
-                Alert.alert('Error', 'Please select a product.');
-                return;
-            }
-    
-            // Handle gas-specific validation
-            if (selectedProduct === 'gas') {
-                if (!gasSize) {
-                    Alert.alert('Error', 'Please select a gas size.');
-                    return;
-                }
-                if (!price || isNaN(Number(price))) {
-                    Alert.alert('Error', 'Please enter a valid price.');
-                    return;
-                }
-    
-                const totalAmount = parseFloat(price);
-    
-                // Check if the sale is on debt
-                if (saleType === 'debt') {
-                    if (!customerName || !customerPhone) {
-                        Alert.alert('Error', 'Please enter the customer\'s name and phone number.');
-                        return;
-                    }
-    
-                    // Insert debt sale into the database
-                    const saleId = await insertSale(selectedProduct, gasSize, 1, totalAmount, 'debt');
-    
-                    // Ensure saleId is valid before inserting debt
-                    if (saleId !== null) {
-                        await insertDebt(saleId, customerName, customerPhone, totalAmount, totalAmount);
-                    } else {
-                        Alert.alert('Error', 'Failed to record the sale. Please try again.');
-                        return;
-                    }
-                } else {
-                    // Insert cash sale into the database
-                    await insertSale(selectedProduct, gasSize, 1, totalAmount, 'cash');
-                }
-            } else {
-                // Validate for other products (petrol, diesel, kerosene)
-                if (!quantity || isNaN(Number(quantity))) {
-                    Alert.alert('Error', 'Please enter a valid quantity.');
-                    return;
-                }
-                if (!price || isNaN(Number(price))) {
-                    Alert.alert('Error', 'Please enter a valid price.');
-                    return;
-                }
-    
-                const totalAmount = parseInt(quantity) * parseFloat(price);
-    
-                // Check if the sale is on debt
-                if (saleType === 'debt') {
-                    if (!customerName || !customerPhone) {
-                        Alert.alert('Error', 'Please enter the customer\'s name and phone number.');
-                        return;
-                    }
-    
-                    // Insert debt sale into the database
-                    const saleId = await insertSale(selectedProduct, null, parseInt(quantity), totalAmount, 'debt');
-    
-                    // Ensure saleId is valid before inserting debt
-                    if (saleId !== null) {
-                        await insertDebt(saleId, customerName, customerPhone, totalAmount, totalAmount);
-                    } else {
-                        Alert.alert('Error', 'Failed to record the sale. Please try again.');
-                        return;
-                    }
-                } else {
-                    // Insert cash sale into the database
-                    await insertSale(selectedProduct, null, parseInt(quantity), totalAmount, 'cash');
-                }
-            }
-    
-            // Success alert and closing the modal
-            Alert.alert('Success', 'Sale recorded successfully!');
-            toggleAddSaleModal();
-        } catch (error) {
-            console.error('Error recording sale:', error);
-            Alert.alert('Error', 'An error occurred while recording the sale.');
-        }
-    };
-
-    return (
-        <View style={styles.container}>
-            {/* Navigation Bar */}
-            <View style={styles.navbar}>
-                <TouchableOpacity style={styles.navbutton}>
-                    <Text style={styles.navtext}>Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.appname}>Swerise</Text>
-                <TouchableOpacity style={styles.navbutton}>
-                    <Text style={styles.navtext}>Menu</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Buttons for employee actions */}
-            <View style={styles.body}>
-                <View style={styles.row}>
-                    <TouchableOpacity style={styles.button} onPress={toggleAddSaleModal}>
-                        <Text style={styles.buttonText}>Add Sale</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText} onPress={handleFetchAllSales}>Delete Sale</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.row}>
-                    <TouchableOpacity style={styles.button} onPress={handleShowTodaysSales}>
-                        <Text style={styles.buttonText}>Today's Sales</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.button} onPress={handleFetchAllSalesForTotal}>
-                        <Text style={styles.buttonText}>Total Sale</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity style={styles.closeButton}>
-                    <Text style={styles.buttonText}>Close</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Modal for Add Sale */}
-            <Modal transparent={true} visible={isAddSaleModalVisible} animationType="slide">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add Sale</Text>
-
-                        {/* Picker for selecting the product */}
-                        <Text style={styles.label}>Select Product</Text>
-                        <Picker
-                            selectedValue={selectedProduct}
-                            onValueChange={(itemValue) => setSelectedProduct(itemValue)}
-                            style={styles.picker}
-                        >
-                            <Picker.Item label="Gas" value="gas" />
-                            <Picker.Item label="Petrol" value="petrol" />
-                            <Picker.Item label="Diesel" value="diesel" />
-                            <Picker.Item label="Kerosene" value="kerosene" />
-                        </Picker>
-
-                        {/* Conditional Input for Gas */}
-                        {selectedProduct === 'gas' && (
-                            <>
-                                <Text style={styles.label}>Select Gas Size</Text>
-                                <Picker
-                                    selectedValue={gasSize}
-                                    onValueChange={(itemValue) => setGasSize(itemValue)}
-                                    style={styles.picker}
-                                >
-                                    <Picker.Item label="6kg" value="6kg" />
-                                    <Picker.Item label="13kg" value="13kg" />
-                                </Picker>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter Price (KSH)"
-                                    keyboardType="numeric"
-                                    value={price}
-                                    onChangeText={setPrice}
-                                />
-                            </>
-                        )}
-
-                        {/* Input fields for Petrol, Diesel, Kerosene (liters and price) */}
-                        {(selectedProduct === 'petrol' || selectedProduct === 'diesel' || selectedProduct === 'kerosene') && (
-                            <>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter Quantity (liters)"
-                                    keyboardType="numeric"
-                                    value={quantity}
-                                    onChangeText={setQuantity}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter Price (KSH)"
-                                    keyboardType="numeric"
-                                    value={price}
-                                    onChangeText={setPrice}
-                                />
-                            </>
-                        )}
-
-                        {/* Sale Type Picker */}
-                        <Text style={styles.label}>Sale Type</Text>
-                        <Picker
-                            selectedValue={saleType}
-                            onValueChange={(itemValue) => setSaleType(itemValue)}
-                            style={styles.picker}
-                        >
-                            <Picker.Item label="Cash" value="cash" />
-                            <Picker.Item label="Debt" value="debt" />
-                        </Picker>
-
-                        {/* Conditional Input for Debt */}
-                        {saleType === 'debt' && (
-                            <>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Customer Name"
-                                    value={customerName}
-                                    onChangeText={setCustomerName}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Customer Phone"
-                                    keyboardType="phone-pad"
-                                    value={customerPhone}
-                                    onChangeText={setCustomerPhone}
-                                />
-                            </>
-                        )}
-
-                        {/* Submit and Cancel Buttons */}
-                        <View style={styles.modalButtonRow}>
-                            <TouchableOpacity style={styles.modalButton} onPress={handleSaleSubmission}>
-                                <Text style={styles.modalButtonText}>Submit</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.modalButton} onPress={toggleAddSaleModal}>
-                                <Text style={styles.modalButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Modal to display total sales */}
-            <Modal transparent={true} visible={isTotalSalesModalVisible} animationType="slide">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Total Sales</Text>
-                        
-                        {/* Scrollable list inside the modal */}
-                        <FlatList
-                            data={allSales}
-                            keyExtractor={(item) => item.id.toString()}
-                            renderItem={({ item }) => (
-                                <View style={styles.saleItem}>
-                                    <Text style={styles.saleText}>
-                                        {item.product} - {item.saleType} - {item.date} - ${item.price}
-                                    </Text>
-                                </View>
-                            )}
-                            contentContainerStyle={styles.flatListContent}
-                        />
-
-                        <TouchableOpacity style={modalStyles.closeButton} onPress={toggleTotalSalesModal}>
-                            <Text style={modalStyles.closeButtonText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Modal for Delete Sale */}
-            <Modal transparent={true} visible={isDeleteSaleModalVisible} animationType="slide">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Delete Sale</Text>
-                        <FlatList
-                            data={sales}
-                            keyExtractor={(item) => item.id.toString()}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={styles.saleItem}
-                                    onPress={() => setSelectedSale(item)}
-                                >
-                                    <Text style={styles.saleText}>
-                                        {item.product} - {item.saleType} - {item.date}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                        <View style={styles.modalButtonRow}>
-                            {selectedSale && (
-                                <TouchableOpacity style={styles.modalButton} onPress={handleDeleteSale}>
-                                    <Text style={styles.modalButtonText}>Delete</Text>
-                                </TouchableOpacity>
-                            )}
-                            <TouchableOpacity style={styles.modalButton} onPress={toggleDeleteSaleModal}>
-                                <Text style={styles.modalButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-
-            
-            {/* Modal to view all sales*/}
-            <Modal
-                visible={isSalesModalVisible}
-                animationType="slide"
-                onRequestClose={() => setSalesModalVisible(false)}
-            >
-                <View style={modalStyles.modalContainer}>
-                <Text style={modalStyles.modalTitle}>Today's Sales</Text>
-                <FlatList
-                    data={todaysSales}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                    <View style={modalStyles.saleItem}>
-                        <Text style={modalStyles.saleText}>
-                        Product: {item.product}, Size: {item.gasSize || 'N/A'}, Quantity: {item.quantity}, 
-                        Price: {item.price}, Type: {item.saleType}
-                        </Text>
-                    </View>
-                    )}
-                    ListEmptyComponent={() => (
-                    <Text style={modalStyles.emptyText}>No sales recorded for today.</Text>
-                    )}
-                />
-                <TouchableOpacity style={modalStyles.closeButton} onPress={() => setSalesModalVisible(false)}>
-                                <Text style={modalStyles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-                </View>
-            </Modal>
-
-        </View>
-    );
+// Employee Home Screen
+const EmployeeHome = () => {
+  return (
+    <View style={styles.welcomeContainer}>
+      <Text style={styles.welcomeText}>Welcome to EmployeeFirstPage</Text>
+    </View>
+  );
 };
+
+// Employee First Page with Bottom Tab Navigation
+const EmployeeFirstPage = () => {
+  return (
+    <Tab.Navigator
+      initialRouteName="EmployeeHome"
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ color, size }) => {
+          let iconName: string = '';  // Declare iconName as a string
+
+          // Set iconName based on route name
+          if (route.name === 'EmployeeHome') {
+            iconName = 'home';  // FontAwesome "home"
+          } else if (route.name === 'Sales') {
+            iconName = 'shopping-cart';  // FontAwesome "shopping-cart"
+          } else if (route.name === 'Settings') {
+            iconName = 'cogs';  // FontAwesome "cogs"
+          }
+
+          // Return the icon component with the correct properties
+          return <Icon name={iconName} type="font-awesome" size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#4682b4', 
+        tabBarInactiveTintColor: '#8a8a8a',  
+        tabBarStyle: {
+          backgroundColor: '#252F40',  
+          height: 60,
+          borderTopWidth: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: 'bold',
+        },
+      })}
+    >
+      <Tab.Screen
+        name="EmployeeHome"
+        component={EmployeeHome}
+        options={{ tabBarLabel: 'Home', headerShown: false }}
+      />
+      <Tab.Screen
+        name="Sales"
+        component={SalePage}
+        options={{ tabBarLabel: 'Sales', headerShown: false }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsPage}
+        options={{ tabBarLabel: 'Settings', headerShown: false }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+// Styles for the components
+const styles = StyleSheet.create({
+  welcomeContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f8f8',
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
 
 export default EmployeeFirstPage;
