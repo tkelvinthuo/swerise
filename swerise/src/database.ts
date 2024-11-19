@@ -23,6 +23,7 @@ shop - employee, products(kerosene, ...), sales
  */
 
 import SQLite from 'react-native-sqlite-storage';
+import { Sale, Debt } from './screens/types';
 import { format } from 'date-fns';
 
 // Enable debugging for development
@@ -320,6 +321,7 @@ const createSalesTable = async () => {
           employee_id INTEGER,
           sale_type TEXT NOT NULL CHECK(sale_type IN ('cash', 'debt')),
           sync_status INTEGER DEFAULT 0,
+          customer TEXT,
           FOREIGN KEY (shop_id) REFERENCES shops(shop_id),
           FOREIGN KEY (product_id) REFERENCES products(product_id)
         );`,
@@ -337,20 +339,20 @@ const createSalesTable = async () => {
   }
 };
 
-type Sale = {
-  sale_id: number;
-  shop_id: number;
-  product_id: number;
-  quantity: number;
-  total_price: number;
-  sale_date: string;
-  employee_id: number;
-  sale_type: 'cash' | 'debt';
-  sync_status: number;
-};
+//type Sale = {
+//  sale_id: number;
+//  shop_id: number;
+//  product_id: number;
+//  quantity: number;
+//  total_price: number;
+//  sale_date: string;
+//  employee_id: number;
+//  sale_type: 'cash' | 'debt';
+//  sync_status: number;
+//};
 
 // Insert a new sale and create a debt record if the payment method is debt
-export const insertSale = async (sale: Sale, paymentMethod: string, debt?: Debt): Promise<void> => {
+export const insertSale = async (sale: Omit<Sale, "id">, paymentMethod: string, debt?: Debt): Promise<void> => {
   try {
     const database = await db;
     database.transaction(tx => {
@@ -361,8 +363,7 @@ export const insertSale = async (sale: Sale, paymentMethod: string, debt?: Debt)
           sale.shop_id, sale.product_id, sale.quantity, sale.total_price, sale.employee_id, paymentMethod
         ],
         (_, result) => {
-          const sale_id = result.insertId;
-
+          const sale_id = result.insertId; // Database-generated id
           if (paymentMethod === "debt" && debt) {
             const debtInfo: Debt = {
               sale_id: sale_id,
@@ -371,7 +372,6 @@ export const insertSale = async (sale: Sale, paymentMethod: string, debt?: Debt)
               amount_due: debt.amount_due,
               amount_paid: 0,
             };
-
             insertDebt(debtInfo);
           }
         },
@@ -384,6 +384,7 @@ export const insertSale = async (sale: Sale, paymentMethod: string, debt?: Debt)
     console.error('Error accessing database:', error);
   }
 };
+
 
 export const deleteSale = async (sale_id: number): Promise<void> => {
   try {
@@ -461,7 +462,26 @@ export const getSalesByDate = async (dateFilter: DateFilter = 'all'): Promise<Sa
     return [];
   }
 };
-
+// Function to alter the sales table to add a customer column
+const alterSalesTableToAddCustomer = async () => {
+  try {
+    const database = await db;
+    database.transaction(tx => {
+      tx.executeSql(
+        `ALTER TABLE sales ADD COLUMN customer TEXT;`,
+        [],
+        () => {
+          console.log('Customer column added successfully to the sales table');
+        },
+        (error) => {
+          console.error('Error adding customer column to sales table:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error accessing database to alter table:', error);
+  }
+};
 
 // to handle debts table
 const createDebtsTable = async () => {
@@ -493,13 +513,13 @@ const createDebtsTable = async () => {
   }
 };
 
-type Debt = {
-  sale_id: number;
-  customer_name: string;
-  customer_phone?: string | null; 
-  amount_due: number;
-  amount_paid: number; 
-};
+//type Debt = {
+//  sale_id: number;
+//  customer_name: string;
+//  customer_phone?: string | null; 
+//  amount_due: number;
+//  amount_paid: number; 
+//};
 
 export const insertDebt = async (debt: Debt): Promise<void> => {
   try {
@@ -561,6 +581,8 @@ export const makePartialPayment = async (debt_id: number, payment_amount: number
 export const initializeDatabase = async () => {
   await createUsersTable();
   await insertDefaultUsers();
+  await createSalesTable();
+  await createDebtsTable();
 };
 
 export default db;
