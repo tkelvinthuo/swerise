@@ -23,7 +23,7 @@ shop - employee, products(kerosene, ...), sales
  */
 
 import SQLite from 'react-native-sqlite-storage';
-import { Sale, Debt } from './screens/types';
+import { Sale, Debt, DebtInfo } from './screens/types';
 import { format } from 'date-fns';
 
 // Enable debugging for development
@@ -352,36 +352,59 @@ const createSalesTable = async () => {
 //};
 
 // Insert a new sale and create a debt record if the payment method is debt
-export const insertSale = async (sale: Omit<Sale, "id">, paymentMethod: string, debt?: Debt): Promise<void> => {
+export const insertSale = async (
+  sale: Omit<Sale, "sale_id">,
+  paymentMethod: "cash" | "debt",
+  debt?: DebtInfo
+): Promise<number> => {
   try {
     const database = await db;
-    database.transaction(tx => {
-      tx.executeSql(
-        `INSERT INTO sales (shop_id, product_id, quantity, total_price, sale_date, employee_id, sale_type, sync_status)
-         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, 0);`,
-        [
-          sale.shop_id, sale.product_id, sale.quantity, sale.total_price, sale.employee_id, paymentMethod
-        ],
-        (_, result) => {
-          const sale_id = result.insertId; // Database-generated id
-          if (paymentMethod === "debt" && debt) {
-            const debtInfo: Debt = {
-              sale_id: sale_id,
-              customer_name: debt.customer_name,
-              customer_phone: debt.customer_phone === null ? undefined : debt.customer_phone,  
-              amount_due: debt.amount_due,
-              amount_paid: 0,
-            };
-            insertDebt(debtInfo);
+    return new Promise<number>((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO sales (shop_id, product_id, quantity, total_price, sale_date, employee_id, sale_type, sync_status)
+           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, 0);`,
+          [
+            sale.shop_id,
+            sale.product_id,
+            sale.quantity,
+            sale.total_price,
+            sale.employee_id,
+            paymentMethod,
+          ],
+          async (_, result) => {
+            const sale_id = result.insertId; // Database-generated id
+
+            // If the payment method is "debt", insert the debt information
+            if (paymentMethod === "debt" && debt) {
+              try {
+                const debtInfo: Debt = {
+                  sale_id: sale_id,
+                  customer_name: debt.customer_name,
+                  customer_phone: debt.customer_phone || null,
+                  amount_due: debt.amount_due,
+                  amount_paid: 0, // Default to 0
+                };
+
+                await insertDebt(debtInfo); // Await the debt insertion
+              } catch (debtError) {
+                console.error("Error inserting debt:", debtError);
+                reject(debtError); // Reject the promise if debt insertion fails
+              }
+            }
+
+            resolve(sale_id); // Resolve the sale_id
+          },
+          error => {
+            console.error("Error inserting sale:", error);
+            reject(error);
           }
-        },
-        (error) => {
-          console.error('Error inserting sale:', error);
-        }
-      );
+        );
+      });
     });
   } catch (error) {
-    console.error('Error accessing database:', error);
+    console.error("Error accessing database:", error);
+    throw error;
   }
 };
 
@@ -513,6 +536,49 @@ const createDebtsTable = async () => {
   }
 };
 
+const dropAndRecreateDebtsTable = async () => {
+  try {
+    const database = await db;
+    database.transaction(tx => {
+      // Drop the table if it exists
+      tx.executeSql(
+        `DROP TABLE IF EXISTS debts;`,
+        [],
+        () => {
+          console.log('Debts table dropped successfully');
+          
+          // Recreate the table with the correct schema
+          tx.executeSql(
+            `CREATE TABLE IF NOT EXISTS debts (
+              debt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              sale_id INTEGER,
+              customer_name TEXT NOT NULL,
+              customer_phone TEXT,
+              amount_due REAL NOT NULL,
+              amount_paid REAL DEFAULT 0,
+              sync_status INTEGER DEFAULT 0,
+              FOREIGN KEY (sale_id) REFERENCES sales(sale_id)
+            );`,
+            [],
+            () => {
+              console.log('Debts table created successfully');
+            },
+            (error) => {
+              console.error('Error creating debts table:', error);
+            }
+          );
+        },
+        (error) => {
+          console.error('Error dropping debts table:', error);
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error opening database:', error);
+  }
+};
+
+
 //type Debt = {
 //  sale_id: number;
 //  customer_name: string;
@@ -526,26 +592,28 @@ export const insertDebt = async (debt: Debt): Promise<void> => {
     const database = await db;
     database.transaction(tx => {
       tx.executeSql(
-        `INSERT INTO debts (sale_id, customer_name, customer_phone, amount_due, sync_status)
+        `INSERT INTO debts (sale_id, customer_name, customer_phone, amount_due, amount_paid, sync_status)
          VALUES (?, ?, ?, ?, ?, 0);`,
         [
           debt.sale_id,
           debt.customer_name,
           debt.customer_phone || null,
           debt.amount_due,
+          debt.amount_paid, // Include amount_paid
         ],
         (_, result) => {
           console.log(`Debt inserted successfully with ID: ${result.insertId}`);
         },
-        (error) => {
-          console.error('Error inserting debt:', error);
+        error => {
+          console.error("Error inserting debt:", error);
         }
       );
     });
   } catch (error) {
-    console.error('Error accessing database:', error);
+    console.error("Error accessing database:", error);
   }
 };
+
 
 // add a payments table 
 

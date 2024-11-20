@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, FlatList } from 'react-native';
-import { getSalesByDate } from "../database";
+import { getSalesByDate, insertSale, insertDebt } from "../database";
+import AddSaleModal from "./AddSaleModal";
 
 interface Sale {
   sale_id: number;
@@ -24,9 +25,25 @@ interface SaleUI {
   totalAmount: string;
 }
 
+interface Debt {
+  sale_id: number; // Will be assigned after inserting the sale
+  customer_name: string;
+  customer_phone: string | null;
+  amount_due: number;
+  amount_paid: number; // Amount paid for the debt, default is 0
+}
+ 
+
+interface DebtInfo {
+  customer_name: string;
+  customer_phone: string | null;
+  amount_due: number;
+}
+
 const SalePage = () => {
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month'>('today');
   const [salesData, setSalesData] = useState<SaleUI[]>([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   // Function to map the raw database sale to the UI-friendly format
   const mapSaleToUI = (sale: Sale): SaleUI => {
@@ -58,6 +75,41 @@ const SalePage = () => {
   const handleFilterChange = (newFilter: 'today' | 'week' | 'month') => {
     setDateFilter(newFilter);
   };
+
+  // Function to handle adding a sale
+  const handleAddSale = async (
+    sale: Omit<Sale, "sale_id">, // Exclude sale_id as it is auto-generated
+    saleType: "cash" | "debt",
+    debtInfo: DebtInfo
+  ) => {
+    try {
+      // Insert sale into the database and get the sale_id
+      const sale_id = await insertSale(sale, saleType, debtInfo); // Ensure insertSale returns sale_id
+
+      // If the sale type is "debt", create the full Debt object and insert it
+      if (saleType === "debt") {
+        const debt: Debt = {
+          sale_id: sale_id, // Use the generated sale_id
+          customer_name: debtInfo.customer_name,
+          customer_phone: debtInfo.customer_phone,
+          amount_due: debtInfo.amount_due,
+          amount_paid: 0, // Default amount paid is 0
+        };
+
+        // Insert the debt into the debts table
+        await insertDebt(debt); // Ensure insertDebt accepts a Debt object
+      }
+
+      setIsModalVisible(false); // Close the modal
+
+      // Refresh sales data after adding a sale
+      const updatedSales = await getSalesByDate(dateFilter);
+      setSalesData(updatedSales.map(mapSaleToUI));
+    } catch (error) {
+      console.error("Error adding sale:", error);
+    }
+  };
+
 
   // Correctly render the SaleUI item
   const renderSaleItem = ({ item }: { item: SaleUI }) => (
@@ -115,9 +167,18 @@ const SalePage = () => {
         keyExtractor={(item) => item.id}
       />
 
-      <TouchableOpacity style={styles.addSaleButton}>
+      <TouchableOpacity style={styles.addSaleButton}
+      onPress={() => setIsModalVisible(true)}>
         <Text style={styles.addSaleText}>Add Sale</Text>
       </TouchableOpacity>
+      {/* Add Sale Modal */}
+      
+      <AddSaleModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)} // Close modal
+        onSubmit={handleAddSale} // Handle form submission
+      />
+
     </View>
   );
 };
