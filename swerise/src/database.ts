@@ -339,19 +339,6 @@ const createSalesTable = async () => {
   }
 };
 
-//type Sale = {
-//  sale_id: number;
-//  shop_id: number;
-//  product_id: number;
-//  quantity: number;
-//  total_price: number;
-//  sale_date: string;
-//  employee_id: number;
-//  sale_type: 'cash' | 'debt';
-//  sync_status: number;
-//};
-
-// Insert a new sale and create a debt record if the payment method is debt
 export const insertSale = async (
   sale: Omit<Sale, "sale_id">,
   paymentMethod: "cash" | "debt",
@@ -361,9 +348,12 @@ export const insertSale = async (
     const database = await db;
     return new Promise<number>((resolve, reject) => {
       database.transaction(tx => {
+        // Determine the customer value
+        const customerValue = paymentMethod === "cash" ? "New" : debt?.customer_name || "";
+
         tx.executeSql(
-          `INSERT INTO sales (shop_id, product_id, quantity, total_price, sale_date, employee_id, sale_type, sync_status)
-           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, 0);`,
+          `INSERT INTO sales (shop_id, product_id, quantity, total_price, sale_date, employee_id, sale_type, customer, sync_status)
+           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, 0);`,
           [
             sale.shop_id,
             sale.product_id,
@@ -371,6 +361,7 @@ export const insertSale = async (
             sale.total_price,
             sale.employee_id,
             paymentMethod,
+            customerValue, // Include the customer name
           ],
           async (_, result) => {
             const sale_id = result.insertId; // Database-generated id
@@ -407,7 +398,6 @@ export const insertSale = async (
     throw error;
   }
 };
-
 
 export const deleteSale = async (sale_id: number): Promise<void> => {
   try {
@@ -462,6 +452,8 @@ export const getSalesByDate = async (dateFilter: DateFilter = 'all'): Promise<Sa
         break;
     }
 
+    query += ` ORDER BY sale_date DESC`;
+
     return new Promise((resolve, reject) => {
       database.transaction(tx => {
         tx.executeSql(
@@ -485,26 +477,164 @@ export const getSalesByDate = async (dateFilter: DateFilter = 'all'): Promise<Sa
     return [];
   }
 };
-// Function to alter the sales table to add a customer column
-const alterSalesTableToAddCustomer = async () => {
+
+export const getTodaysSalesTotal = async (): Promise<number> => {
   try {
     const database = await db;
-    database.transaction(tx => {
-      tx.executeSql(
-        `ALTER TABLE sales ADD COLUMN customer TEXT;`,
-        [],
-        () => {
-          console.log('Customer column added successfully to the sales table');
-        },
-        (error) => {
-          console.error('Error adding customer column to sales table:', error);
-        }
-      );
+    const todaySalesQuery = `
+      SELECT SUM(total_price) AS totalSales
+      FROM sales
+      WHERE date(sale_date) = date('now')
+    `;
+
+    return new Promise<number>((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          todaySalesQuery,
+          [],
+          (_, results) => {
+            const row = results.rows.item(0);
+            const totalSales = row.totalSales || 0;
+            resolve(totalSales);
+          },
+          (error) => {
+            console.error('Error fetching today\'s sales total:', error);
+            reject(error);
+          }
+        );
+      });
     });
   } catch (error) {
-    console.error('Error accessing database to alter table:', error);
+    console.error('Error accessing database for today\'s sales:', error);
+    throw error;
   }
 };
+
+export const getTodaysCreditSales = async (): Promise<number> => {
+  try {
+    const database = await db;
+    const creditSalesQuery = `
+      SELECT SUM(total_price) AS creditSales
+      FROM sales
+      WHERE date(sale_date) = date('now') AND sale_type = 'debt'
+    `;
+
+    return new Promise<number>((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          creditSalesQuery,
+          [],
+          (_, results) => {
+            const row = results.rows.item(0);
+            const creditSales = row.creditSales || 0;
+            resolve(creditSales);
+          },
+          (error) => {
+            console.error('Error fetching today\'s credit sales:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error accessing database for today\'s credit sales:', error);
+    throw error;
+  }
+};
+
+export const getAllTimeSales = async (): Promise<number> => {
+  try {
+    const database = await db;
+    const allTimeSalesQuery = `
+      SELECT SUM(total_price) AS totalSales
+      FROM sales
+    `;
+
+    return new Promise<number>((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          allTimeSalesQuery,
+          [],
+          (_, results) => {
+            const row = results.rows.item(0);
+            const totalSales = row.totalSales || 0;
+            resolve(totalSales);
+          },
+          (error) => {
+            console.error('Error fetching all-time sales total:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error accessing database for all-time sales:', error);
+    throw error;
+  }
+};
+
+export const getAllTimeCreditSales = async (): Promise<number> => {
+  try {
+    const database = await db;
+    const allTimeCreditSalesQuery = `
+      SELECT SUM(total_price) AS creditSales
+      FROM sales
+      WHERE sale_type = 'debt'
+    `;
+
+    return new Promise<number>((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          allTimeCreditSalesQuery,
+          [],
+          (_, results) => {
+            const row = results.rows.item(0);
+            const creditSales = row.creditSales || 0;
+            resolve(creditSales);
+          },
+          (error) => {
+            console.error('Error fetching all-time credit sales:', error);
+            reject(error);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error accessing database for all-time credit sales:', error);
+    throw error;
+  }
+};
+
+export const getLastFiveSales = async (): Promise<Sale[]> => {
+  try {
+    const database = await db;
+    const salesList: Sale[] = [];
+
+    const query = `SELECT * FROM sales ORDER BY sale_date DESC LIMIT 5`; // Fetch last 5 sales
+    return new Promise((resolve, reject) => {
+      database.transaction(tx => {
+        tx.executeSql(
+          query,
+          [],
+          (_, result) => {
+            for (let i = 0; i < result.rows.length; i++) {
+              salesList.push(result.rows.item(i));
+            }
+            resolve(salesList);
+          },
+          (error) => {
+            console.error('Error reading sales table:', error);
+            reject([]);
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Error accessing database:', error);
+    return [];
+  }
+};
+
 
 // to handle debts table
 const createDebtsTable = async () => {
@@ -535,57 +665,6 @@ const createDebtsTable = async () => {
     console.error('Error opening database:', error);
   }
 };
-
-const dropAndRecreateDebtsTable = async () => {
-  try {
-    const database = await db;
-    database.transaction(tx => {
-      // Drop the table if it exists
-      tx.executeSql(
-        `DROP TABLE IF EXISTS debts;`,
-        [],
-        () => {
-          console.log('Debts table dropped successfully');
-          
-          // Recreate the table with the correct schema
-          tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS debts (
-              debt_id INTEGER PRIMARY KEY AUTOINCREMENT,
-              sale_id INTEGER,
-              customer_name TEXT NOT NULL,
-              customer_phone TEXT,
-              amount_due REAL NOT NULL,
-              amount_paid REAL DEFAULT 0,
-              sync_status INTEGER DEFAULT 0,
-              FOREIGN KEY (sale_id) REFERENCES sales(sale_id)
-            );`,
-            [],
-            () => {
-              console.log('Debts table created successfully');
-            },
-            (error) => {
-              console.error('Error creating debts table:', error);
-            }
-          );
-        },
-        (error) => {
-          console.error('Error dropping debts table:', error);
-        }
-      );
-    });
-  } catch (error) {
-    console.error('Error opening database:', error);
-  }
-};
-
-
-//type Debt = {
-//  sale_id: number;
-//  customer_name: string;
-//  customer_phone?: string | null; 
-//  amount_due: number;
-//  amount_paid: number; 
-//};
 
 export const insertDebt = async (debt: Debt): Promise<void> => {
   try {

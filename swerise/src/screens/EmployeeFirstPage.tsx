@@ -1,33 +1,83 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Button, FlatList } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon } from 'react-native-elements'; 
 import SalePage from './SalePage';
 import SettingsPage from './SettingsPage';
+import { getTodaysSalesTotal, getTodaysCreditSales, getAllTimeSales, getAllTimeCreditSales, getLastFiveSales } from '../database';
+import { useFocusEffect } from '@react-navigation/native';
+import { Sale, SaleUI } from './types';
 
 const Tab = createBottomTabNavigator();
 
-interface Sale {
-  id: string;
-  date: string;
-  customer: string;
-  product: string;
-  qty: string;
-  totalAmount: string;
-}
-
-const recentSales: Sale[] = [
-  { id: '1', date: '2024-11-01', customer: 'John Doe', product: 'Gas 6kg', qty: '2 pcs', totalAmount: '$40.00' },
-  { id: '2', date: '2024-11-02', customer: 'Jane Smith', product: 'Gas 12kg', qty: '1 pc', totalAmount: '$20.00' },
-  { id: '3', date: '2024-11-03', customer: 'Michael J', product: 'Kerosene', qty: '30 ltrs', totalAmount: '$60.00' },
-  { id: '4', date: '2024-11-04', customer: 'Sarah Lee', product: 'Diesel', qty: '50 ltrs', totalAmount: '$100.00' },
-  { id: '5', date: '2024-11-05', customer: 'Tom Clark', product: 'Petrol', qty: '40 ltrs', totalAmount: '$80.00' },
-];
-
 const EmployeeHome = () => {
-  const [showMore, setShowMore] = useState(false);
+  const [salesTodayTotal, setTotalSales] = useState(0);
+  const [creditTodaySales, setCreditSales] = useState(0);
+  const [creditPercentage, setCreditPercentage] = useState(0);
+  const [allTimeSales, setAllTimeSales] = useState(0);
+  const [allTimeCreditSales, setAllTimeCreditSales] = useState(0);
+  const [allTimeCreditPercentage, setAllTimeCreditPercentage] = useState(0);
+  const [salesData, setSalesData] = useState<SaleUI[]>([]);
 
-  const renderSaleItem = ({ item }: { item: Sale }) => (
+  const fetchData = async () => {
+    try {
+      const salesTodayTotal = await getTodaysSalesTotal();
+      const creditTodaySales = await getTodaysCreditSales();
+      const allTimeSales = await getAllTimeSales();
+      const allTimeCreditSales = await getAllTimeCreditSales();
+
+      setTotalSales(salesTodayTotal);
+      setCreditSales(creditTodaySales);
+      setAllTimeSales(allTimeSales);
+      setAllTimeCreditSales(allTimeCreditSales);
+
+      const percentage = salesTodayTotal > 0 ? (creditTodaySales / salesTodayTotal) * 100 : 0;
+      setCreditPercentage(percentage);
+      const allTimePercentage = allTimeSales > 0 ? (allTimeCreditSales / allTimeSales) * 100 : 0;
+      setAllTimeCreditPercentage(allTimePercentage);
+    } catch (error) {
+      console.error('Error fetching today\'s sales:', error);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
+  const productMapping: { [key: number]: string } = {
+    1: "Gas 6kg",
+    2: "Gas 12kg",
+    3: "Diesel",
+    4: "Petrol",
+    5: "Kerosene"
+  };
+
+  const mapSaleToUI = (sale: Sale): SaleUI => ({
+    id: sale.sale_id.toString(),
+    date: new Date(sale.sale_date).toLocaleDateString(),
+    customer: sale.customer || "New",
+    product: productMapping[sale.product_id] || "Unknown Product",
+    qty: `${sale.quantity} pcs`,
+    totalAmount: `${sale.total_price.toFixed(2)}`
+  });
+
+  useEffect(() => {
+    const fetchSales = async () => {
+      try {
+        const salesFromDatabase = await getLastFiveSales();
+        const mappedSales = salesFromDatabase.map(mapSaleToUI);
+        setSalesData(mappedSales);
+      } catch (error) {
+        console.error('Error fetching sales:', error);
+      }
+    };
+
+    fetchSales();
+  }, []);
+
+  const renderSaleItem = ({ item }: { item: SaleUI }) => (
     <View style={styles.saleRow}>
       <Text style={styles.saleColumn}>{item.date}</Text>
       <Text style={styles.saleColumn}>{item.customer}</Text>
@@ -36,8 +86,6 @@ const EmployeeHome = () => {
       <Text style={styles.saleColumn}>{item.totalAmount}</Text>
     </View>
   );
-
-  const displayedSales = showMore ? recentSales : recentSales.slice(0, 10);
 
   return (
     <View style={styles.container}>
@@ -51,20 +99,20 @@ const EmployeeHome = () => {
       <View style={styles.salesOverview}>
         <View style={styles.salesBox}>
           <Text style={styles.salesHeading}>Today's Sales</Text>
-          <Text style={styles.salesNumber}>Ksh. 25,100</Text>
+          <Text style={styles.salesNumber}>Ksh. {salesTodayTotal.toFixed(2)}</Text>
           <View style={styles.salesBottom}>
             <Text style={styles.salesBottomText}>Credits</Text>
-            <Text style={styles.salesBottomText}>Ksh 1.3k</Text>
-            <Text style={styles.salesBottomText}>5%</Text>
+            <Text style={styles.salesBottomText}>Ksh {creditTodaySales.toFixed(2)}</Text>
+            <Text style={styles.salesBottomText}>{creditPercentage.toFixed(0)}%</Text>
           </View>
         </View>
         <View style={styles.salesBox}>
           <Text style={styles.salesHeading}>Total Sales</Text>
-          <Text style={styles.salesNumber}>Ksh. 300,100</Text>
+          <Text style={styles.salesNumber}>Ksh. {allTimeSales.toFixed(2)}</Text>
           <View style={styles.salesBottom}>
             <Text style={styles.salesBottomText}>Credits</Text>
-            <Text style={styles.salesBottomText}>Ksh 61k</Text>
-            <Text style={styles.salesBottomText}>20%</Text>
+            <Text style={styles.salesBottomText}>Ksh {allTimeCreditSales.toFixed(2)}</Text>
+            <Text style={styles.salesBottomText}>{allTimeCreditPercentage.toFixed(2)}%</Text>
           </View>
         </View>
       </View>
@@ -72,7 +120,6 @@ const EmployeeHome = () => {
       <View style={styles.recentSales}>
         <Text style={styles.recentSalesHeading}>Recent Sales</Text>
       </View>
-      {/* Subheadings Row */}
       <View style={styles.subheadingSection}>
         <Text style={styles.subheadingText}>Date</Text>
         <Text style={styles.subheadingText}>Customer</Text>
@@ -81,28 +128,16 @@ const EmployeeHome = () => {
         <Text style={styles.subheadingText}>Total Amt</Text>
       </View>
 
-        {/* Sales Details */}
       <FlatList
-        data={recentSales}
+        data={salesData}
         renderItem={renderSaleItem}
         keyExtractor={(item) => item.id}
-        />
-
-        {/* Show More Button */}
-        {recentSales.length > 10 && (
-          <View style={styles.recentSaleShowMoreButtonContainer}>
-            <Button
-              title={showMore ? "Show Less" : "See More"}
-              onPress={() => setShowMore(!showMore)}
-            />
-          </View>
-        )}
-      
+      />
 
       <View style={styles.bottomOverview}>
         <View style={styles.bottomOverviewBox}>
           <View style={styles.bottomOverviewHeading}>
-          <Text style={styles.bottomOverviewHeadingText}>Inventory balance</Text>
+            <Text style={styles.bottomOverviewHeadingText}>Inventory balance</Text>
           </View>
           <View style={styles.bottomOverviewSubHeading}>
             <Text style={styles.bottomOverviewSubHeadingText}>Product</Text>
@@ -132,7 +167,7 @@ const EmployeeHome = () => {
 
         <View style={styles.bottomOverviewBox}>
           <View style={styles.bottomOverviewHeading}>
-          <Text style={styles.bottomOverviewHeadingText}>Customer Balances</Text>
+            <Text style={styles.bottomOverviewHeadingText}>Customer Balances</Text>
           </View>
           <View style={styles.bottomOverviewSubHeading}>
             <Text style={styles.bottomOverviewSubHeadingText}>Customer</Text>
@@ -159,10 +194,7 @@ const EmployeeHome = () => {
             <Text>Ksh 20,000</Text>
           </View>
         </View>
-        
       </View>
-
-
     </View>
   );
 };
